@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<window>
+    <controls>
+        <control type="videowindow">
+            <width>100%</width>
+            <height>100%</height>
+        </control>
+        <control type="label">
+            <top>400</top>
+            <left>100</left>
+            <label>PROCHAIN : $INFO[Window(10000).Property(KE.NextSinger)]</label>
+            <font>font60</font>
+            <textcolor>white</textcolor>
+        </control>
+        <control type="label">
+            <top>500</top>
+            <left>100</left>
+            <label>Chansons en attente : $INFO[Window(10000).Property(KE.QueueCount)]</label>
+            <font>font30</font>
+        </control>
+    </controls>
+</window>
