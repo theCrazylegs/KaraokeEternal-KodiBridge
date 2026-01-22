@@ -1,0 +1,232 @@
+.heading  {
+  button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    padding: var(--space-s);
+    font-size: var(--font-size-m);
+  }
+
+  svg {
+    height: var(--icon-size-l);
+  }
+}
+
+.content {
+  padding: var(--container-padding);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-m);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.field label {
+  font-size: var(--font-size-s);
+  color: var(--text-secondary);
+}
+
+.field input {
+  padding: var(--space-s);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--input-background);
+  color: var(--text-primary);
+  font-size: var(--font-size-m);
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-m);
+}
+
+.row .field {
+  flex: 1;
+}
+
+.buttons {
+  display: flex;
+  gap: var(--space-m);
+  margin-top: var(--space-m);
+}
+
+.buttons button {
+  flex: 1;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  padding: var(--space-s);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-s);
+  margin-bottom: var(--space-m);
+}
+
+.statusRunning {
+  background: rgba(0, 200, 0, 0.2);
+  color: var(--success-color);
+}
+
+.statusStopped {
+  background: rgba(200, 200, 200, 0.2);
+  color: var(--text-secondary);
+}
+
+.statusIndicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.statusRunning .statusIndicator {
+  background: var(--success-color);
+}
+
+.statusStopped .statusIndicator {
+  background: var(--text-secondary);
+}
+
+.sectionLabel {
+  font-size: var(--font-size-m);
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+  display: block;
+}
+
+.helpText {
+  font-size: var(--font-size-s);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-m);
+  margin-top: 0;
+}
+
+.field select {
+  padding: var(--space-s);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--input-background);
+  color: var(--text-primary);
+  font-size: var(--font-size-m);
+  width: 100%;
+}
+
+.field select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.field input:disabled,
+.field select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.section {
+  margin-bottom: var(--space-m);
+  padding-bottom: var(--space-m);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  margin-bottom: var(--space-m);
+}
+
+.radioLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-s);
+  cursor: pointer;
+  padding: var(--space-s);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  transition: border-color 0.2s;
+}
+
+.radioLabel:hover {
+  border-color: var(--accent-color);
+}
+
+.radioLabel input[type="radio"] {
+  margin-top: 4px;
+}
+
+.radioLabel input[type="radio"]:disabled {
+  cursor: not-allowed;
+}
+
+.radioLabel input[type="radio"]:disabled + .radioText {
+  opacity: 0.6;
+}
+
+.radioText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.radioText strong {
+  color: var(--text-primary);
+}
+
+.radioDesc {
+  font-size: var(--font-size-s);
+  color: var(--text-secondary);
+}
+
+.modeOptions {
+  margin-top: var(--space-m);
+  padding: var(--space-m);
+  background: var(--background-secondary);
+  border-radius: var(--border-radius);
+}
+
+.fieldHint {
+  font-size: var(--font-size-s);
+  color: var(--text-secondary);
+  margin-top: var(--space-xs);
+  display: block;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  cursor: pointer;
+  font-size: var(--font-size-m);
+  color: var(--text-primary);
+}
+
+.checkboxLabel input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.checkboxLabel input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

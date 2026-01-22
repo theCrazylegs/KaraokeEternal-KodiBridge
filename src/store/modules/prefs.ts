@@ -80,6 +80,8 @@ interface PrefsState {
   isFirstRun?: boolean
   isScanning: boolean
   isReplayGainEnabled: boolean
+  isAutoplayEnabled: boolean // Auto-advance to next song without pause
+  isPlaybackControlPublic: boolean // Allow all users to control playback (not just admin/current singer)
   paths: {
     result: number[]
     entities: Record<number, Path>
@@ -95,6 +97,8 @@ interface PrefsState {
 const initialState: PrefsState = {
   isScanning: false,
   isReplayGainEnabled: false,
+  isAutoplayEnabled: true, // Default: auto-advance (current behavior)
+  isPlaybackControlPublic: false, // Default: only admin/current singer can control
   paths: {
     result: [],
     entities: {},

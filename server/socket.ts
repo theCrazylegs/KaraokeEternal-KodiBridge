@@ -10,6 +10,8 @@ import Rooms from './Rooms/Rooms.js'
 import RoomsSocket from './Rooms/socket.js'
 import Queue from './Queue/Queue.js'
 import QueueSocket from './Queue/socket.js'
+import KodiBridgeSocket from './PlayerKodiBridge/socket.js'
+import kodiBridge from './PlayerKodiBridge/KodiBridge.js'
 
 import {
   LIBRARY_PUSH,
@@ -30,11 +32,15 @@ const handlers = {
   ...PlayerSocket,
   ...PrefsSocket,
   ...RoomsSocket,
+  ...KodiBridgeSocket,
 }
 
 const { verify: jwtVerify } = jsonWebToken
 
 export default function (io, jwtKey) {
+  // Initialize KodiBridge with socket.io instance
+  kodiBridge.setIO(io)
+
   io.on('connection', async (sock) => {
     const { keToken } = parseCookie(sock.handshake.headers.cookie)
     const clientLibraryVersion = parseInt(sock.handshake.query.library, 10)

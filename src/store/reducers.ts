@@ -2,6 +2,7 @@ import { combineSlices } from '@reduxjs/toolkit'
 import { optimistic } from 'redux-optimistic-ui'
 
 import artists from 'routes/Library/modules/artists'
+import kodiBridge from './modules/kodiBridge'
 import library from 'routes/Library/modules/library'
 import prefs from './modules/prefs'
 import queue from 'routes/Queue/modules/queue'
@@ -18,6 +19,7 @@ export interface LazyLoadedSlices {} // eslint-disable-line @typescript-eslint/n
 
 const combinedReducer = combineSlices({
   artists,
+  kodiBridge,
   library,
   prefs,
   queue: optimistic(queue),

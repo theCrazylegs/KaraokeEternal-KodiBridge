@@ -1,4 +1,5 @@
 import Rooms from '../Rooms/Rooms.js'
+import kodiBridge from '../PlayerKodiBridge/KodiBridge.js'
 
 import {
   PLAYER_CMD_NEXT,
@@ -29,24 +30,32 @@ const ACTION_HANDLERS = {
       type: PLAYER_CMD_OPTIONS,
       payload,
     })
+    // Forward to KodiBridge if running in this room
+    kodiBridge.handleCommand(PLAYER_CMD_OPTIONS, payload)
   },
   [PLAYER_REQ_NEXT]: async (sock) => {
     // @todo: emit to players only
     sock.server.to(Rooms.prefix(sock.user.roomId)).emit('action', {
       type: PLAYER_CMD_NEXT,
     })
+    // Forward to KodiBridge if running in this room
+    kodiBridge.handleCommand(PLAYER_CMD_NEXT)
   },
   [PLAYER_REQ_PAUSE]: async (sock) => {
     // @todo: emit to players only
     sock.server.to(Rooms.prefix(sock.user.roomId)).emit('action', {
       type: PLAYER_CMD_PAUSE,
     })
+    // Forward to KodiBridge if running in this room
+    kodiBridge.handleCommand(PLAYER_CMD_PAUSE)
   },
   [PLAYER_REQ_PLAY]: async (sock) => {
     // @todo: emit to players only
     sock.server.to(Rooms.prefix(sock.user.roomId)).emit('action', {
       type: PLAYER_CMD_PLAY,
     })
+    // Forward to KodiBridge if running in this room
+    kodiBridge.handleCommand(PLAYER_CMD_PLAY)
   },
   [PLAYER_REQ_REPLAY]: async (sock, { payload }) => {
     // @todo: emit to players only
@@ -54,6 +63,8 @@ const ACTION_HANDLERS = {
       type: PLAYER_CMD_REPLAY,
       payload,
     })
+    // Forward to KodiBridge if running in this room
+    kodiBridge.handleCommand(PLAYER_CMD_REPLAY, payload)
   },
   [PLAYER_REQ_VOLUME]: async (sock, { payload }) => {
     // @todo: emit to players only
@@ -61,6 +72,8 @@ const ACTION_HANDLERS = {
       type: PLAYER_CMD_VOLUME,
       payload,
     })
+    // Forward to KodiBridge if running in this room
+    kodiBridge.handleCommand(PLAYER_CMD_VOLUME, payload)
   },
   [PLAYER_EMIT_STATUS]: async (sock, { payload }) => {
     // so we can tell the room when players leave and

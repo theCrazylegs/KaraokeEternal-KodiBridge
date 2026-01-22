@@ -21,6 +21,7 @@ import mediaRouter from './Media/router.js'
 import prefsRouter from './Prefs/router.js'
 import roomsRouter from './Rooms/router.js'
 import userRouter from './User/router.js'
+import kodiBridgeRouter from './PlayerKodiBridge/router.js'
 import pushQueuesAndLibrary from './lib/pushQueuesAndLibrary.js'
 import { Server as SocketIO } from 'socket.io'
 import socketActions from './socket.js'
@@ -135,17 +136,26 @@ async function serverWorker ({ env, startScanner, stopScanner, shutdownHandlers 
   app.use(koaLogger((str, args) => (args.length === 6 && args[3] >= 500) ? log.error(str) : log.debug(str)))
 
   app.use(koaFavicon(path.join(env.KES_PATH_ASSETS, 'favicon.ico')))
-  app.use(koaRange)
+
+  // Apply koa-range middleware conditionally (skip for KodiBridge which handles ranges manually)
+  app.use(async (ctx, next) => {
+    if (ctx.request.path.startsWith(`${urlPath}api/kodi/`)) {
+      return next() // Skip koa-range for KodiBridge streaming
+    }
+    return koaRange(ctx, next)
+  })
+
   app.use(koaBody({ multipart: true }))
 
   // all http requests
   app.use(async (ctx, next) => {
     ctx.jwtKey = jwtKey // used by login route
 
-    // skip JWT/session validation if non-API request or logging in/out
+    // skip JWT/session validation if non-API request or logging in/out or KodiBridge streaming
     if (!ctx.request.path.startsWith(`${urlPath}api/`)
       || ctx.request.path === `${urlPath}api/login`
-      || ctx.request.path === `${urlPath}api/logout`) {
+      || ctx.request.path === `${urlPath}api/logout`
+      || ctx.request.path.startsWith(`${urlPath}api/kodi/`)) {
       return next()
     }
 
@@ -183,6 +193,7 @@ async function serverWorker ({ env, startScanner, stopScanner, shutdownHandlers 
   baseRouter.use(prefsRouter.routes())
   baseRouter.use(roomsRouter.routes())
   baseRouter.use(userRouter.routes())
+  baseRouter.use(kodiBridgeRouter.routes())
   app.use(baseRouter.routes())
 
   // serve index.html with dynamic base tag at the main SPA routes
