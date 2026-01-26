@@ -483,7 +483,7 @@ class KEService(xbmc.Monitor):
             self.label_next = xbmcgui.ControlLabel(
                 160, 590, 200, 25,
                 'A suivre :',
-                font='font10',
+                font='font12',
                 textColor='FFAAAAAA'
             )
             self.window.addControl(self.label_next)
@@ -492,26 +492,26 @@ class KEService(xbmc.Monitor):
             self.label_singer = xbmcgui.ControlLabel(
                 160, 615, 700, 45,
                 'EN ATTENTE...',
-                font='font13',
+                font='font14',
                 textColor='FFFFFFFF'
             )
             self.window.addControl(self.label_singer)
 
-            # Titre + Artiste (violet)
+            # Titre + Artiste (violet #FD80D8)
             self.label_title = xbmcgui.ControlLabel(
                 160, 660, 700, 40,
                 '',
-                font='font12',
-                textColor='FF9150D3'
+                font='font14',
+                textColor='FFFD80D8'  # #FD80D8 avec alpha 100%
             )
             self.window.addControl(self.label_title)
 
-            # Compteur (a droite)
+            # Compteur (a droite, violet #FD80D8)
             self.label_count = xbmcgui.ControlLabel(
                 950, 600, 300, 60,
                 '0',
                 font='font14',
-                textColor='FF9150D3',
+                textColor='FFFD80D8',  # #FD80D8 avec alpha 100%
                 alignment=2  # right align
             )
             self.window.addControl(self.label_count)
@@ -519,7 +519,7 @@ class KEService(xbmc.Monitor):
             self.label_count_text = xbmcgui.ControlLabel(
                 950, 665, 300, 35,
                 'en attente',
-                font='font10',
+                font='font12',
                 textColor='FFE0E0E0',
                 alignment=2
             )
