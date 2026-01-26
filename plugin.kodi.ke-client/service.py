@@ -462,11 +462,12 @@ class KEService(xbmc.Monitor):
             self.window.addControl(self.bg_image)
 
             # Bandeau semi-transparent en bas (noir 80% opacite)
-            bg_icon = os.path.join(ADDON_PATH, 'icon.png')
+            # On utilise white.png (image blanche) teintee en noir transparent
+            white_img = os.path.join(ADDON_PATH, 'white.png')
             self.info_bg = xbmcgui.ControlImage(
                 0, 580, 1280, 140,
-                bg_icon,
-                colorDiffuse='CC000000'  # noir 80% opaque
+                white_img,
+                colorDiffuse='CC000000'  # noir 80% opaque (CC = 80% alpha)
             )
             self.window.addControl(self.info_bg)
 

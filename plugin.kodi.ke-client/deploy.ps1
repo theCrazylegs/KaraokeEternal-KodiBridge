@@ -282,6 +282,9 @@ Write-OK "service.py"
 & $ADB_PATH push "icon.png" "$DEST" | Out-Null
 Write-OK "icon.png"
 
+& $ADB_PATH push "white.png" "$DEST" | Out-Null
+Write-OK "white.png"
+
 & $ADB_PATH push "resources/settings.xml" "$DEST/resources/" | Out-Null
 Write-OK "resources/settings.xml"
 
