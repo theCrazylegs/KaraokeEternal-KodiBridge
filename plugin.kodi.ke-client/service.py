@@ -467,7 +467,7 @@ class KEService(xbmc.Monitor):
             self.info_bg = xbmcgui.ControlImage(
                 0, 580, 1280, 140,
                 white_img,
-                colorDiffuse='CC000000'  # noir 80% opaque (CC = 80% alpha)
+                colorDiffuse='80000000'  # noir 50% opaque (plus transparent)
             )
             self.window.addControl(self.info_bg)
 
