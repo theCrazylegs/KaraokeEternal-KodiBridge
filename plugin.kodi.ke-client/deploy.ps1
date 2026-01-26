@@ -288,8 +288,6 @@ Write-OK "white.png"
 & $ADB_PATH push "resources/settings.xml" "$DEST/resources/" | Out-Null
 Write-OK "resources/settings.xml"
 
-& $ADB_PATH push "resources/skins/default/720p/waiting_screen.xml" "$DEST/resources/skins/default/720p/" | Out-Null
-Write-OK "resources/skins/default/720p/waiting_screen.xml"
 
 # Deployer les libs Socket.io
 Write-Step "Deploiement des libs Python (Socket.io)..."

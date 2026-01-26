@@ -519,7 +519,7 @@ class KEService(xbmc.Monitor):
             self.label_count_text = xbmcgui.ControlLabel(
                 950, 665, 300, 35,
                 'en attente',
-                font='font12',
+                font='font14',
                 textColor='FFE0E0E0',
                 alignment=2
             )
