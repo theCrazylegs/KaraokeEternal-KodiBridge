@@ -187,56 +187,38 @@ router.get('/status', async (ctx) => {
 // IMPORTANT: Must be defined BEFORE /:token route to avoid being captured
 // ------------------------------------
 
-// Serve the idle screen video (no auth required for Kodi)
+// Serve the idle screen image (no auth required for Kodi)
 router.get('/idle', async (ctx) => {
-  // The idle video is in the assets folder
-  const videoPath = path.resolve(__dirname, '../../assets/presentation.mp4')
+  // The idle image is in the assets folder
+  const imagePath = path.resolve(__dirname, '../../assets/waiting_screen.jpeg')
 
   try {
-    const stats = await fsPromises.stat(videoPath)
+    const stats = await fsPromises.stat(imagePath)
 
-    // Handle Range requests for video streaming
-    const range = ctx.headers.range
-    if (range) {
-      const parts = range.replace(/bytes=/, '').split('-')
-      const start = parseInt(parts[0], 10)
-      const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1
-      const chunkSize = end - start + 1
+    ctx.set('Content-Length', String(stats.size))
+    ctx.set('Cache-Control', 'public, max-age=3600') // Cache 1 hour
+    ctx.type = 'image/jpeg'
+    ctx.body = fs.createReadStream(imagePath)
 
-      ctx.status = 206
-      ctx.set('Content-Range', `bytes ${start}-${end}/${stats.size}`)
-      ctx.set('Accept-Ranges', 'bytes')
-      ctx.set('Content-Length', String(chunkSize))
-      ctx.type = 'video/mp4'
-
-      ctx.body = fs.createReadStream(videoPath, { start, end })
-    } else {
-      ctx.set('Accept-Ranges', 'bytes')
-      ctx.set('Content-Length', String(stats.size))
-      ctx.type = 'video/mp4'
-      ctx.body = fs.createReadStream(videoPath)
-    }
-
-    log.verbose('Serving idle screen video')
+    log.verbose('Serving idle screen image')
   } catch (err) {
-    log.error('Idle video not found at %s', videoPath)
-    ctx.throw(404, 'Idle video not found')
+    log.error('Idle image not found at %s', imagePath)
+    ctx.throw(404, 'Idle image not found')
   }
 })
 
-// HEAD request for idle video (Kodi checks before streaming)
+// HEAD request for idle image
 router.head('/idle', async (ctx) => {
-  const videoPath = path.resolve(__dirname, '../../assets/presentation.mp4')
+  const imagePath = path.resolve(__dirname, '../../assets/waiting_screen.jpeg')
 
   try {
-    const stats = await fsPromises.stat(videoPath)
-    ctx.set('Accept-Ranges', 'bytes')
+    const stats = await fsPromises.stat(imagePath)
     ctx.set('Content-Length', String(stats.size))
-    ctx.type = 'video/mp4'
+    ctx.type = 'image/jpeg'
     ctx.status = 200
     log.verbose('HEAD /idle')
   } catch (err) {
-    ctx.throw(404, 'Idle video not found')
+    ctx.throw(404, 'Idle image not found')
   }
 })
 
