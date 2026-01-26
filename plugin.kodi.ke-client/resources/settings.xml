@@ -17,6 +17,15 @@
                         <maximum>65535</maximum>
                     </constraints>
                 </setting>
+                <setting id="room_id" type="integer" label="Room ID" help="Numero de la room KE a rejoindre (defaut: 1)">
+                    <level>0</level>
+                    <default>1</default>
+                    <control type="edit" format="integer" />
+                    <constraints>
+                        <minimum>1</minimum>
+                        <maximum>999</maximum>
+                    </constraints>
+                </setting>
             </group>
         </category>
     </section>

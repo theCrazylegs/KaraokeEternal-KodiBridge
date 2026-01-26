@@ -430,16 +430,12 @@ router.post('/setup', async (ctx) => {
   }
 })
 
-// get a user's image
+// get a user's image (public endpoint - no auth required for avatars)
 router.get('/user/:userId/image', async (ctx) => {
   const targetId = parseInt(ctx.params.userId, 10)
 
-  if (ctx.user.userId !== targetId && !ctx.user.isAdmin) {
-    // ensure target user has been in the same room
-    if (!Rooms.hasUserBeenInRoom(ctx.user.roomId, targetId)) {
-      ctx.throw(403)
-    }
-  }
+  // Pas de verification d'auth - c'est un karaoke, pas une banque !
+  // Les avatars sont publics pour permettre l'affichage sur Kodi et autres clients
 
   const user = await User.getById(targetId)
 

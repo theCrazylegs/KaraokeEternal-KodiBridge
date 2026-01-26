@@ -1,22 +1,145 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<window>
+<window type="dialog">
+    <zorder>99</zorder>
+    <defaultcontrol always="true">9999</defaultcontrol>
+    <coordinates>
+        <system>1</system>
+        <left>0</left>
+        <top>0</top>
+    </coordinates>
     <controls>
-        <control type="videowindow">
-            <width>100%</width>
-            <height>100%</height>
+        <!-- Fond video en boucle -->
+        <control type="videowindow" id="2">
+            <left>0</left>
+            <top>0</top>
+            <width>1280</width>
+            <height>720</height>
         </control>
-        <control type="label">
-            <top>400</top>
-            <left>100</left>
-            <label>PROCHAIN : $INFO[Window(10000).Property(KE.NextSinger)]</label>
-            <font>font60</font>
-            <textcolor>white</textcolor>
-        </control>
-        <control type="label">
-            <top>500</top>
-            <left>100</left>
-            <label>Chansons en attente : $INFO[Window(10000).Property(KE.QueueCount)]</label>
-            <font>font30</font>
+
+        <!-- Panneau d'info en bas de l'ecran -->
+        <control type="group">
+            <top>480</top>
+            <left>30</left>
+            <width>1220</width>
+            <height>220</height>
+
+            <!-- Fond semi-transparent -->
+            <control type="image">
+                <left>0</left>
+                <top>0</top>
+                <width>1220</width>
+                <height>210</height>
+                <colordiffuse>CC000000</colordiffuse>
+            </control>
+
+            <!-- Avatar du chanteur (image) -->
+            <control type="image">
+                <left>25</left>
+                <top>25</top>
+                <width>160</width>
+                <height>160</height>
+                <texture>$INFO[Window(10000).Property(KE.NextAvatarUrl)]</texture>
+                <aspectratio>keep</aspectratio>
+                <visible>!String.IsEmpty(Window(10000).Property(KE.NextAvatarUrl))</visible>
+            </control>
+
+            <!-- Fond de secours pour avatar (carre violet) -->
+            <control type="image">
+                <left>25</left>
+                <top>25</top>
+                <width>160</width>
+                <height>160</height>
+                <colordiffuse>FF9150D3</colordiffuse>
+                <visible>String.IsEmpty(Window(10000).Property(KE.NextAvatarUrl))</visible>
+            </control>
+
+            <!-- Initiale du chanteur (si pas d'avatar) -->
+            <control type="label">
+                <left>25</left>
+                <top>55</top>
+                <width>160</width>
+                <height>100</height>
+                <label>$INFO[Window(10000).Property(KE.NextInitial)]</label>
+                <font>font13</font>
+                <textcolor>FFFFFFFF</textcolor>
+                <align>center</align>
+                <visible>String.IsEmpty(Window(10000).Property(KE.NextAvatarUrl))</visible>
+            </control>
+
+            <!-- Nom du chanteur -->
+            <control type="label">
+                <left>210</left>
+                <top>25</top>
+                <width>650</width>
+                <height>50</height>
+                <label>$INFO[Window(10000).Property(KE.NextSinger)]</label>
+                <font>font13</font>
+                <textcolor>FFFFFFFF</textcolor>
+            </control>
+
+            <!-- Titre de la chanson -->
+            <control type="label">
+                <left>210</left>
+                <top>75</top>
+                <width>650</width>
+                <height>50</height>
+                <label>$INFO[Window(10000).Property(KE.NextTitle)]</label>
+                <font>font12</font>
+                <textcolor>FF9150D3</textcolor>
+            </control>
+
+            <!-- Artiste -->
+            <control type="label">
+                <left>210</left>
+                <top>120</top>
+                <width>650</width>
+                <height>50</height>
+                <label>$INFO[Window(10000).Property(KE.NextArtist)]</label>
+                <font>font10</font>
+                <textcolor>FFAAAAAA</textcolor>
+            </control>
+
+            <!-- Compteur de chansons -->
+            <control type="group">
+                <left>920</left>
+                <top>30</top>
+                <width>280</width>
+                <height>160</height>
+
+                <control type="label">
+                    <left>0</left>
+                    <top>0</top>
+                    <width>280</width>
+                    <height>80</height>
+                    <label>$INFO[Window(10000).Property(KE.QueueCount)]</label>
+                    <font>font14</font>
+                    <textcolor>FF9150D3</textcolor>
+                    <align>center</align>
+                </control>
+
+                <control type="label">
+                    <left>0</left>
+                    <top>70</top>
+                    <width>280</width>
+                    <height>50</height>
+                    <label>en attente</label>
+                    <font>font10</font>
+                    <textcolor>FFE0E0E0</textcolor>
+                    <align>center</align>
+                </control>
+            </control>
+
+            <!-- TEST: Label statique pour voir si le window s'affiche -->
+            <control type="label">
+                <left>0</left>
+                <top>180</top>
+                <width>1220</width>
+                <height>30</height>
+                <label>*** KARAOKE ETERNAL - TEST OVERLAY ***</label>
+                <font>font12</font>
+                <textcolor>FFFF0000</textcolor>
+                <align>center</align>
+            </control>
         </control>
     </controls>
 </window>

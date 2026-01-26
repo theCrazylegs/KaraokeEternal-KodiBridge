@@ -241,6 +241,85 @@ router.head('/idle', async (ctx) => {
 })
 
 // ------------------------------------
+// Stream Endpoint (for Kodi addon)
+// IMPORTANT: Must be defined BEFORE /:token route
+// ------------------------------------
+
+/**
+ * GET /api/kodi/stream/:mediaId
+ * Generates a streaming token and serves the media file
+ * Used by the Kodi addon to stream media directly
+ */
+router.get('/stream/:mediaId', async (ctx) => {
+  const mediaId = parseInt(ctx.params.mediaId, 10)
+
+  if (isNaN(mediaId)) {
+    ctx.throw(400, 'Invalid media ID')
+    return
+  }
+
+  // Generate a token for this media
+  const token = generateStreamToken(mediaId)
+
+  // Get file info
+  const info = await getFileInfoForToken(token)
+  if (!info) {
+    ctx.throw(404, 'Media not found')
+    return
+  }
+
+  const { file, stats, mimeType } = info
+
+  log.verbose('Streaming to Kodi addon: %s (%sMB)', mimeType, (stats.size / 1000000).toFixed(2))
+
+  // Handle Range requests
+  const range = ctx.headers.range
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-')
+    const start = parseInt(parts[0], 10)
+    const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1
+    const chunkSize = end - start + 1
+
+    ctx.status = 206
+    ctx.set('Content-Range', `bytes ${start}-${end}/${stats.size}`)
+    ctx.set('Accept-Ranges', 'bytes')
+    ctx.set('Content-Length', String(chunkSize))
+    ctx.type = mimeType
+
+    ctx.body = fs.createReadStream(file, { start, end })
+  } else {
+    ctx.set('Accept-Ranges', 'bytes')
+    ctx.set('Content-Length', String(stats.size))
+    ctx.type = mimeType
+
+    ctx.body = fs.createReadStream(file)
+  }
+})
+
+// HEAD request for stream endpoint
+router.head('/stream/:mediaId', async (ctx) => {
+  const mediaId = parseInt(ctx.params.mediaId, 10)
+
+  if (isNaN(mediaId)) {
+    ctx.throw(400, 'Invalid media ID')
+    return
+  }
+
+  const token = generateStreamToken(mediaId)
+  const info = await getFileInfoForToken(token)
+
+  if (!info) {
+    ctx.throw(404, 'Media not found')
+    return
+  }
+
+  ctx.set('Accept-Ranges', 'bytes')
+  ctx.set('Content-Length', String(info.stats.size))
+  ctx.type = info.mimeType
+  ctx.status = 200
+})
+
+// ------------------------------------
 // ADB Management Endpoints
 // IMPORTANT: Must be defined BEFORE /:token route
 // ------------------------------------
