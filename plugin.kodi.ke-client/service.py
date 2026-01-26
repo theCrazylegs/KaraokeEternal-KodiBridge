@@ -122,9 +122,8 @@ class KEService(xbmc.Monitor):
         self.media_duration = 0
         self.notification_shown = False
 
-        # Chemin de l'image d'attente telecharge
+        # Chemin de l'image d'attente telechargee
         self._idle_image_path = None
-        self._avatar_cache = {}
 
         log("Service initialise")
 
@@ -402,7 +401,7 @@ class KEService(xbmc.Monitor):
             if not server_url:
                 return None
 
-            local_path = xbmcvfs.translatePath("special://temp/ke_waiting_screen.jpg")
+            local_path = xbmcvfs.translatePath("special://temp/ke_waiting_screen.png")
             idle_url = f"{server_url}/api/kodi/idle"
 
             log(f"Telechargement image idle: {idle_url}")
@@ -417,26 +416,6 @@ class KEService(xbmc.Monitor):
         except Exception as e:
             log(f"Erreur telechargement image idle: {e}", xbmc.LOGWARNING)
         return None
-
-    def _download_avatar(self, user_id, server_url):
-        """Telecharge l'avatar de l'utilisateur."""
-        try:
-            if user_id in self._avatar_cache:
-                return self._avatar_cache[user_id]
-
-            local_path = xbmcvfs.translatePath(f"special://temp/ke_avatar_{user_id}.png")
-            avatar_url = f"{server_url}/api/user/{user_id}/image"
-
-            response = urlopen(avatar_url, timeout=5)
-            if response.getcode() == 200:
-                data = response.read()
-                with xbmcvfs.File(local_path, 'wb') as f:
-                    f.write(data)
-                self._avatar_cache[user_id] = local_path
-                return local_path
-        except:
-            self._avatar_cache[user_id] = ''
-        return ''
 
     def _show_waiting_screen(self):
         """Affiche l'ecran d'attente avec image fixe et infos."""
@@ -461,70 +440,54 @@ class KEService(xbmc.Monitor):
             )
             self.window.addControl(self.bg_image)
 
-            # Panneau d'info semi-transparent en bas
+            # Bandeau semi-transparent en bas (noir 80% opacite)
             bg_icon = os.path.join(ADDON_PATH, 'icon.png')
             self.info_bg = xbmcgui.ControlImage(
-                30, 480, 1220, 210,
+                0, 600, 1280, 120,
                 bg_icon,
-                colorDiffuse='CC000000'
+                colorDiffuse='CC000000'  # noir 80% opaque
             )
             self.window.addControl(self.info_bg)
 
-            # Avatar placeholder (carre violet)
-            self.avatar_bg = xbmcgui.ControlImage(
-                55, 505, 160, 160,
-                bg_icon,
-                colorDiffuse='FF9150D3'
+            # Label "A suivre" (petit texte)
+            self.label_next = xbmcgui.ControlLabel(
+                50, 610, 200, 30,
+                'A suivre :',
+                font='font10',
+                textColor='FFAAAAAA'
             )
-            self.window.addControl(self.avatar_bg)
+            self.window.addControl(self.label_next)
 
-            # Avatar image
-            self.avatar_img = xbmcgui.ControlImage(
-                55, 505, 160, 160,
-                '',
-                aspectRatio=1
-            )
-            self.window.addControl(self.avatar_img)
-
-            # Nom du chanteur
+            # Nom du chanteur (grand texte blanc)
             self.label_singer = xbmcgui.ControlLabel(
-                240, 505, 650, 50,
+                50, 635, 700, 40,
                 'En attente...',
                 font='font13',
                 textColor='FFFFFFFF'
             )
             self.window.addControl(self.label_singer)
 
-            # Titre
+            # Titre + Artiste (texte violet)
             self.label_title = xbmcgui.ControlLabel(
-                240, 555, 650, 50,
+                50, 675, 700, 35,
                 '',
                 font='font12',
                 textColor='FF9150D3'
             )
             self.window.addControl(self.label_title)
 
-            # Artiste
-            self.label_artist = xbmcgui.ControlLabel(
-                240, 600, 650, 50,
-                '',
-                font='font10',
-                textColor='FFAAAAAA'
-            )
-            self.window.addControl(self.label_artist)
-
-            # Compteur
+            # Compteur (a droite)
             self.label_count = xbmcgui.ControlLabel(
-                950, 510, 280, 80,
+                900, 620, 330, 60,
                 '0',
                 font='font14',
                 textColor='FF9150D3',
-                alignment=2
+                alignment=2  # right align
             )
             self.window.addControl(self.label_count)
 
             self.label_count_text = xbmcgui.ControlLabel(
-                950, 580, 280, 50,
+                900, 675, 330, 35,
                 'en attente',
                 font='font10',
                 textColor='FFE0E0E0',
@@ -551,11 +514,9 @@ class KEService(xbmc.Monitor):
             self.window = None
             self.bg_image = None
             self.info_bg = None
-            self.avatar_bg = None
-            self.avatar_img = None
+            self.label_next = None
             self.label_singer = None
             self.label_title = None
-            self.label_artist = None
             self.label_count = None
             self.label_count_text = None
 
@@ -566,13 +527,15 @@ class KEService(xbmc.Monitor):
         next_singer = next_item.get('userDisplayName', '') if next_item else ''
         next_title = next_item.get('title', '') if next_item else ''
         next_artist = next_item.get('artist', '') if next_item else ''
-        next_user_id = next_item.get('userId') if next_item else None
 
-        # Avatar
-        server_url = self._get_server_url()
-        avatar_path = ''
-        if next_user_id and server_url:
-            avatar_path = self._download_avatar(next_user_id, server_url)
+        # Combiner titre et artiste
+        title_line = ''
+        if next_title and next_artist:
+            title_line = f"{next_title} - {next_artist}"
+        elif next_title:
+            title_line = next_title
+        elif next_artist:
+            title_line = next_artist
 
         # Compteur
         current_idx = -1
@@ -588,13 +551,9 @@ class KEService(xbmc.Monitor):
             if self.label_singer:
                 self.label_singer.setLabel(next_singer or 'En attente...')
             if self.label_title:
-                self.label_title.setLabel(next_title or '')
-            if self.label_artist:
-                self.label_artist.setLabel(next_artist or '')
+                self.label_title.setLabel(title_line)
             if self.label_count:
                 self.label_count.setLabel(str(remaining))
-            if self.avatar_img and avatar_path:
-                self.avatar_img.setImage(avatar_path)
         except:
             pass
 

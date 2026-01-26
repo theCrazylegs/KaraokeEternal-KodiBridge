@@ -190,14 +190,14 @@ router.get('/status', async (ctx) => {
 // Serve the idle screen image (no auth required for Kodi)
 router.get('/idle', async (ctx) => {
   // The idle image is in the assets folder
-  const imagePath = path.resolve(__dirname, '../../assets/waiting_screen.jpeg')
+  const imagePath = path.resolve(__dirname, '../../assets/waiting_screen.png')
 
   try {
     const stats = await fsPromises.stat(imagePath)
 
     ctx.set('Content-Length', String(stats.size))
     ctx.set('Cache-Control', 'public, max-age=3600') // Cache 1 hour
-    ctx.type = 'image/jpeg'
+    ctx.type = 'image/png'
     ctx.body = fs.createReadStream(imagePath)
 
     log.verbose('Serving idle screen image')
@@ -209,12 +209,12 @@ router.get('/idle', async (ctx) => {
 
 // HEAD request for idle image
 router.head('/idle', async (ctx) => {
-  const imagePath = path.resolve(__dirname, '../../assets/waiting_screen.jpeg')
+  const imagePath = path.resolve(__dirname, '../../assets/waiting_screen.png')
 
   try {
     const stats = await fsPromises.stat(imagePath)
     ctx.set('Content-Length', String(stats.size))
-    ctx.type = 'image/jpeg'
+    ctx.type = 'image/png'
     ctx.status = 200
     log.verbose('HEAD /idle')
   } catch (err) {
