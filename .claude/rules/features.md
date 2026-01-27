@@ -37,15 +37,17 @@ NEXT → écran attente → ATTEND PLAY → démarrer chanson
 ## TODO / Roadmap
 
 ### Priorité 1 ⏰
-- [ ] **Paroles synchronisées MP4** (karaoké natif)
+- [ ] **multilingue** UK/FR/..... fichier de config (priorisation queue)
+- [ ] **Refactoriser le player WEB pour utiliser le même code que pour l'ADD-ON KODI** (karaoké natif)
+- [ ] **Système de vote** chansons (priorisation queue)
 - [ ] **Historique par utilisateur** (stats soirées)
 
 ### Priorité 2 ⚡
-- [ ] **Système de vote** chansons (priorisation queue)
+- [ ] **Mode tournoi** (élimination)
 - [ ] **Export/Import playlists** (JSON)
+- [ ] **Paroles synchronisées MP4** (karaoké natif)
 
 ### Priorité 3 🎮
-- [ ] **Mode tournoi** (élimination)
 - [ ] **Multi-rooms** simultanées
 
 ## Quand implémenter un TODO
