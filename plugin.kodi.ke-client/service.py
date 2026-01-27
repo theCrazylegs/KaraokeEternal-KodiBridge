@@ -126,6 +126,9 @@ class KEService(xbmc.Monitor):
         self._idle_image_path = None
         self._avatar_cache = {}
 
+        # Item en attente (apres NEXT, avant PLAY)
+        self.pending_item = None
+
         log("Service initialise")
 
     def _get_server_url(self):
@@ -243,10 +246,18 @@ class KEService(xbmc.Monitor):
 
     def _handle_play(self):
         """Gere la commande PLAY."""
-        if self.player.isPlaying():
+        # Si un item est en attente (apres NEXT), le jouer
+        if self.pending_item:
+            log(f"Lecture item en attente: queueId={self.pending_item.get('queueId')}")
+            item = self.pending_item
+            self.pending_item = None
+            self._play_item(item, item.get('queueId'))
+        elif self.player.isPlaying():
+            # Si deja en lecture, c'est un resume (toggle pause)
             self.player.pause()
             self.state['isPlaying'] = True
         else:
+            # Sinon, charger le prochain
             self._load_next()
 
     def _handle_pause(self):
@@ -257,8 +268,38 @@ class KEService(xbmc.Monitor):
             self._emit_status()
 
     def _handle_next(self):
-        """Gere la commande NEXT."""
-        self._load_next()
+        """Gere la commande NEXT - passe a l'item suivant et affiche waiting screen."""
+        # Arreter la lecture en cours
+        if self.player.isPlaying():
+            self.player.stop()
+
+        # Recuperer le prochain item
+        next_item = self._get_next_queue_item()
+
+        if not next_item:
+            # Fin de la queue
+            log("NEXT: Fin de la queue")
+            self.state['isAtQueueEnd'] = True
+            self.state['isPlaying'] = False
+            self.pending_item = None
+            self._show_waiting_screen()
+            self._emit_status()
+            return
+
+        # Stocker l'item en attente (sera joue au prochain PLAY)
+        self.pending_item = next_item
+        log(f"NEXT: Item en attente - {next_item.get('userDisplayName')} - {next_item.get('title')}")
+
+        # Avancer le queueId pour que l'overlay montre les bonnes infos
+        # Mais on ne joue pas encore - on attend PLAY
+        self.state['queueId'] = next_item.get('queueId')
+        self.state['isPlaying'] = False
+        self.state['isAtQueueEnd'] = False
+        self.state['position'] = 0
+
+        # Afficher l'ecran d'attente avec les infos du prochain
+        self._show_waiting_screen()
+        self._emit_status()
 
     def _handle_replay(self, queue_id):
         """Gere la commande REPLAY."""
@@ -326,12 +367,19 @@ class KEService(xbmc.Monitor):
     def on_playback_started(self):
         self.state['isPlaying'] = True
         self._hide_waiting_screen()
+        self.notification_shown = False  # Reset en dehors du try
+        self.media_duration = 0
+
+        # Attendre un peu que Kodi ait analyse le media
+        xbmc.sleep(500)
+
         try:
             self.media_duration = self.player.getTotalTime()
-            self.notification_shown = False
             log(f"Duree du media: {self.media_duration:.1f}s")
-        except:
+        except Exception as e:
+            log(f"Erreur getTotalTime: {e}", xbmc.LOGWARNING)
             self.media_duration = 0
+
         self._emit_status()
 
     def on_playback_ended(self):
@@ -339,6 +387,7 @@ class KEService(xbmc.Monitor):
         self.state['isPlaying'] = False
         self.notification_shown = False
         self.media_duration = 0
+        self.pending_item = None  # Reset - sera recalcule au prochain PLAY
         self._show_waiting_screen()
         self._emit_status()
 
@@ -346,6 +395,8 @@ class KEService(xbmc.Monitor):
         self.state['isPlaying'] = False
         self.notification_shown = False
         self.media_duration = 0
+        # Ne pas reset pending_item ici car on_playback_stopped est appele par _handle_next
+        # apres player.stop() - on veut garder le pending_item
         self._show_waiting_screen()
         self._emit_status()
 
@@ -359,10 +410,21 @@ class KEService(xbmc.Monitor):
 
     def _check_upnext_notification(self):
         """Verifie si on doit afficher la notification 'Up Next'."""
-        if self.notification_shown or not self.state['isPlaying']:
+        if self.notification_shown:
+            return
+        if not self.state['isPlaying']:
             return
         if self.media_duration <= 0:
-            return
+            # Essayer de recuperer la duree si pas encore disponible
+            try:
+                if self.player.isPlaying():
+                    self.media_duration = self.player.getTotalTime()
+                    if self.media_duration > 0:
+                        log(f"Duree recuperee tardivement: {self.media_duration:.1f}s")
+            except:
+                pass
+            if self.media_duration <= 0:
+                return
 
         try:
             position = self.player.getTime()
@@ -376,21 +438,30 @@ class KEService(xbmc.Monitor):
                     singer = next_item.get('userDisplayName', 'Inconnu')
                     title = next_item.get('title', '')
                     artist = next_item.get('artist', '')
+                    co_singers = next_item.get('coSingers', [])
+
+                    # Ajoute les co-chanteurs au nom du chanteur
+                    singer_display = singer
+                    if co_singers and len(co_singers) > 0:
+                        singer_display += ' + ' + ', '.join(co_singers)
 
                     heading = "A suivre"
-                    message = f"{singer}: {title}"
+                    message = f"{singer_display}: {title}"
                     if artist:
                         message += f" ({artist})"
 
+                    log(f"Affichage notification Up Next: {remaining:.1f}s restantes")
                     xbmcgui.Dialog().notification(
                         heading,
                         message,
                         xbmcgui.NOTIFICATION_INFO,
                         5000
                     )
-                    log(f"Notification Up Next: {singer} - {title}")
-        except:
-            pass
+                    log(f"Notification Up Next: {singer_display} - {title}")
+                else:
+                    log("Pas de prochain item pour notification Up Next")
+        except Exception as e:
+            log(f"Erreur check notification: {e}", xbmc.LOGWARNING)
 
     def _download_idle_image(self):
         """Telecharge l'image d'attente depuis le serveur."""
@@ -525,6 +596,16 @@ class KEService(xbmc.Monitor):
             )
             self.window.addControl(self.label_count_text)
 
+            # Label centre pour "EN ATTENTE D'UN CHANTEUR" (queue vide)
+            self.label_empty = xbmcgui.ControlLabel(
+                0, 630, 1280, 50,
+                '',
+                font='font14',
+                textColor='FFFFFFFF',
+                alignment=6  # center align (2=right, 4=center horizontal, 6=center)
+            )
+            self.window.addControl(self.label_empty)
+
             self.window.show()
             self._update_overlay_info()
             log("Ecran d'attente affiche")
@@ -550,33 +631,56 @@ class KEService(xbmc.Monitor):
             self.label_title = None
             self.label_count = None
             self.label_count_text = None
+            self.label_empty = None
 
     def _update_overlay_info(self):
         """Met a jour les infos affichees sur l'overlay."""
-        next_item = self._get_next_queue_item()
+        # Si un item est en attente (apres NEXT), afficher SES infos
+        # Sinon, afficher le prochain dans la queue
+        if self.pending_item:
+            display_item = self.pending_item
+        else:
+            display_item = self._get_next_queue_item()
 
-        next_singer = next_item.get('userDisplayName', '') if next_item else ''
-        next_title = next_item.get('title', '') if next_item else ''
-        next_artist = next_item.get('artist', '') if next_item else ''
-        next_user_id = next_item.get('userId') if next_item else None
+        # Verifier si la queue est vide (pas d'item a afficher)
+        queue_is_empty = display_item is None
 
-        # Formatage: Singer en MAJUSCULES
-        singer_display = next_singer.upper() if next_singer else 'EN ATTENTE...'
+        if queue_is_empty:
+            # Mode "attente d'un chanteur" - pas de chanson dans la queue
+            singer_display = 'EN ATTENTE D\'UN CHANTEUR'
+            title_line = ''
+            avatar_path = ''
+            next_user_id = None
+        else:
+            next_singer = display_item.get('userDisplayName', '')
+            next_title = display_item.get('title', '')
+            next_artist = display_item.get('artist', '')
+            next_user_id = display_item.get('userId')
+            co_singers = display_item.get('coSingers', [])
 
-        # Formatage: Titre (Title case) - ARTISTE (MAJUSCULES)
-        title_line = ''
-        if next_title and next_artist:
-            title_line = f"{next_title.title()} - {next_artist.upper()}"
-        elif next_title:
-            title_line = next_title.title()
-        elif next_artist:
-            title_line = next_artist.upper()
+            # Formatage: Singer en MAJUSCULES + co-chanteurs
+            if next_singer:
+                singer_display = next_singer.upper()
+                if co_singers and len(co_singers) > 0:
+                    # Ajoute les co-chanteurs: "ALICE + Bob, Charlie"
+                    singer_display += ' + ' + ', '.join(co_singers)
+            else:
+                singer_display = 'EN ATTENTE D\'UN CHANTEUR'
 
-        # Avatar
-        server_url = self._get_server_url()
-        avatar_path = ''
-        if next_user_id and server_url:
-            avatar_path = self._download_avatar(next_user_id, server_url)
+            # Formatage: Titre (Title case) - ARTISTE (MAJUSCULES)
+            title_line = ''
+            if next_title and next_artist:
+                title_line = f"{next_title.title()} - {next_artist.upper()}"
+            elif next_title:
+                title_line = next_title.title()
+            elif next_artist:
+                title_line = next_artist.upper()
+
+            # Avatar
+            server_url = self._get_server_url()
+            avatar_path = ''
+            if next_user_id and server_url:
+                avatar_path = self._download_avatar(next_user_id, server_url)
 
         # Compteur
         current_idx = -1
@@ -589,14 +693,38 @@ class KEService(xbmc.Monitor):
 
         # Mettre a jour les labels si le window existe
         try:
-            if self.label_singer:
-                self.label_singer.setLabel(singer_display)
-            if self.label_title:
-                self.label_title.setLabel(title_line)
-            if self.label_count:
-                self.label_count.setLabel(str(remaining))
-            if self.avatar_img and avatar_path:
-                self.avatar_img.setImage(avatar_path)
+            if queue_is_empty:
+                # Mode queue vide: afficher message centre, cacher le reste
+                if self.label_empty:
+                    self.label_empty.setLabel('EN ATTENTE D\'UN CHANTEUR')
+                if self.label_next:
+                    self.label_next.setLabel('')
+                if self.label_singer:
+                    self.label_singer.setLabel('')
+                if self.label_title:
+                    self.label_title.setLabel('')
+                if self.label_count:
+                    self.label_count.setLabel('')
+                if self.label_count_text:
+                    self.label_count_text.setLabel('')
+                if self.avatar_img:
+                    self.avatar_img.setImage('')
+            else:
+                # Mode normal: afficher infos du prochain chanteur
+                if self.label_empty:
+                    self.label_empty.setLabel('')
+                if self.label_next:
+                    self.label_next.setLabel('A suivre :')
+                if self.label_singer:
+                    self.label_singer.setLabel(singer_display)
+                if self.label_title:
+                    self.label_title.setLabel(title_line)
+                if self.label_count:
+                    self.label_count.setLabel(str(remaining))
+                if self.label_count_text:
+                    self.label_count_text.setLabel('en attente' if remaining > 0 else '')
+                if self.avatar_img:
+                    self.avatar_img.setImage(avatar_path if avatar_path else '')
         except:
             pass
 

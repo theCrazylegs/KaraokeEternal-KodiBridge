@@ -25,6 +25,9 @@ export interface QueueItem {
   mediaType: 'cdg' | 'mp4'
   isOptimistic?: false
   isVideoKeyingEnabled: boolean
+  coSingers?: string[]
+  title?: string
+  artist?: string
 }
 
 export interface OptimisticQueueItem {
