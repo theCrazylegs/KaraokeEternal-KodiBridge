@@ -1,26 +1,27 @@
 # ============================================
-# Karaoke Eternal Kodi - Configuration
+# Karaoke Eternal Kodi - Configuration TEMPLATE
 # ============================================
-# Copie ce fichier en config.ps1 et personnalise pour ton environnement
+# Copie ce fichier → config.ps1 et personnalise !
+
+# PSScriptAnalyzer: Supprimer faux positif PSUseDeclaredVarsMoreThanAssignments
+# $Config est utilisé via dot-sourcing (. .\config.ps1) dans deploy.ps1
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSUseDeclaredVarsMoreThanAssignments', 
+    'Config',
+    Justification = '$Config exporté via dot-sourcing vers deploy.ps1'
+)]
 
 $Config = @{
-    # ADB Configuration
-    ADBPath      = "C:\platform-tools\adb.exe"              # Chemin vers adb.exe
-    DeviceIP     = "192.168.1.XXX"                          # IP de ton Freebox Player / Android TV
-    ADBPort      = 5555                                     # Port ADB (généralement 5555)
+    ADBPath      = "C:\platform-tools\adb.exe"
+    DeviceIP     = "192.168.1.XXX"     # ← TON IP Freebox
+    ADBPort      = 5555
     
-    # Kodi Configuration
-    KodiPackage  = "org.xbmc.kodi"                          # Package name Android (Kodi officiel)
-    AddonID      = "plugin.kodi.ke-client"                  # ID de l'addon (ne pas changer)
-    KodiDataDir  = "/storage/emulated/0/Android/data/org.xbmc.kodi/files/.kodi"  # Chemin données Kodi
+    KodiPackage  = "org.xbmc.kodi"
+    AddonID      = "plugin.kodi.ke-client"
+    KodiDataDir  = "/storage/emulated/0/Android/data/org.xbmc.kodi/files/.kodi"
     
-    # Options par défaut
-    NoClearCacheDefault = $false                            # Vider cache par défaut ? (false = oui)
-    DebugModeDefault    = $false                            # Mode debug par défaut ?
+    NoClearCacheDefault = $false
+    DebugModeDefault    = $false
 }
 
-Write-Host "Configuration template chargée" -ForegroundColor Green
-Write-Host "IMPORTANT: Copie ce fichier → config.ps1 et personnalise les chemins/IP !" -ForegroundColor Yellow
-
-# Export pour deploy.ps1
-Export-ModuleMember -Variable Config
+Write-Host "✅ Template chargé. Copie → config.ps1 et édite DeviceIP !" -ForegroundColor Green
