@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm audit:*)",
+      "Bash(ls:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(dir:*)",
+      "Bash(pip download:*)",
+      "Bash(python -c \"import zipfile; import os; [zipfile.ZipFile\\(f\\).extractall\\(''..''\\) for f in os.listdir\\(''.''\\) if f.endswith\\(''.whl''\\)]\")",
+      "Bash(python -m zipfile:*)",
+      "Bash(xcopy:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell:*)",
+      "Bash(node scripts/deploy-kodi-addon.js:*)",
+      "Bash(timeout /t 15 /nobreak)",
+      "Bash(\"F:\\\\rv_data_local\\\\telechargement\\\\platform-tools-latest-windows\\\\platform-tools\\\\adb.exe\" pull \"/storage/emulated/0/Android/data/org.xbmc.kodi/files/.kodi/addons/skin.estuary/fonts/DejaVuSans.ttf\" \"f:\\\\r-et-d_perso\\\\projet-karaoke\\\\KaraokeEternal\\\\plugin.kodi.ke-client\\\\resources\\\\skins\\\\default\\\\fonts\\\\DejaVuSans.ttf\")",
+      "Bash(cmd.exe /c \"F:\\\\rv_data_local\\\\telechargement\\\\platform-tools-latest-windows\\\\platform-tools\\\\adb.exe pull /data/data/org.xbmc.kodi/files/.kodi/addons/skin.estuary/fonts/DejaVuSans.ttf f:\\\\r-et-d_perso\\\\projet-karaoke\\\\KaraokeEternal\\\\plugin.kodi.ke-client\\\\resources\\\\skins\\\\default\\\\fonts\\\\DejaVuSans.ttf\")",
+      "Bash(cmd.exe:*)",
+      "Bash(curl:*)",
+      "Bash(ffprobe:*)",
+      "Bash(Move-Item:*)",
+      "Bash(Move-Item -Force \"F:\\\\r-et-d_perso\\\\projet-karaoke\\\\KaraokeEternal\\\\assets\\\\presentation_fixed.mp4\" \"F:\\\\r-et-d_perso\\\\projet-karaoke\\\\KaraokeEternal\\\\assets\\\\presentation.mp4\")",
+      "Bash(Write-Host \"OK - Fichier remplace\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(python -c:*)"
+    ]
+  }
+}
