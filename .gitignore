@@ -14,3 +14,11 @@ node_modules/
 .hugo_build.lock
 .nova
 .vscode
+
+# Deploy Kodi (local)
+config.ps1
+deploy-backup.ps1
+
+# Claude Code
+.claude/settings.local.json
+.claude/CLAUDE.local.md
