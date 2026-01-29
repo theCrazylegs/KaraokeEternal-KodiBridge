@@ -7,6 +7,8 @@ import styles from './PlayerPrefs.css'
 
 const PlayerPrefs = () => {
   const isReplayGainEnabled = useAppSelector(state => state.prefs.isReplayGainEnabled)
+  const isAutoplayEnabled = useAppSelector(state => state.prefs.isAutoplayEnabled)
+  const isPlaybackControlPublic = useAppSelector(state => state.prefs.isPlaybackControlPublic)
   const dispatch = useAppDispatch()
 
   const toggleCheckbox = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,6 +26,26 @@ const PlayerPrefs = () => {
       )}
     >
       <div className={styles.content}>
+        <label>
+          <input
+            type='checkbox'
+            checked={isAutoplayEnabled}
+            onChange={toggleCheckbox}
+            name='isAutoplayEnabled'
+          />
+          {' '}
+          Auto-play next song (uncheck to pause between songs)
+        </label>
+        <label>
+          <input
+            type='checkbox'
+            checked={isPlaybackControlPublic}
+            onChange={toggleCheckbox}
+            name='isPlaybackControlPublic'
+          />
+          {' '}
+          Allow all users to control playback
+        </label>
         <label>
           <input
             type='checkbox'

@@ -28,8 +28,12 @@ router.get('/', async (ctx) => {
     return
   }
 
-  // non-admins only get roles
-  ctx.body = { roles: prefs.roles }
+  // non-admins get roles + public player preferences
+  ctx.body = {
+    roles: prefs.roles,
+    isAutoplayEnabled: prefs.isAutoplayEnabled,
+    isPlaybackControlPublic: prefs.isPlaybackControlPublic,
+  }
 })
 
 // add a media path

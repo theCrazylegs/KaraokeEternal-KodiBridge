@@ -123,6 +123,13 @@ export const WATCHER_WORKER_WATCH = 'watcherWorker/WATCH'
 export const SCANNER_WORKER_EXITED = 'scannerWorker/EXITED'
 export const PREFS_PATHS_CHANGED = 'serverWorker/PREFS_PATHS_CHANGED'
 
+// KodiBridge
+export const KODI_BRIDGE_GET_STATUS = 'server/KODI_BRIDGE_GET_STATUS'
+export const KODI_BRIDGE_SET_CONFIG = 'server/KODI_BRIDGE_SET_CONFIG'
+export const KODI_BRIDGE_START = 'server/KODI_BRIDGE_START'
+export const KODI_BRIDGE_STOP = 'server/KODI_BRIDGE_STOP'
+export const KODI_BRIDGE_STATUS = 'kodiBridge/STATUS'
+
 // Misc
 export const _SUCCESS = '_SUCCESS'
 export const _ERROR = '_ERROR'

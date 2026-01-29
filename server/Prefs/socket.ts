@@ -4,6 +4,9 @@ import Prefs from './Prefs.js'
 import { LIBRARY_PUSH, PREFS_PATH_SET_PRIORITY, PREFS_PUSH, PREFS_SET, _ERROR } from '../../shared/actionTypes.js'
 const log = getLogger(`server[${process.pid}]`)
 
+// Public preferences that should be sent to all users (not just admins)
+const PUBLIC_PREFS = ['isAutoplayEnabled', 'isPlaybackControlPublic']
+
 const ACTION_HANDLERS = {
   [PREFS_SET]: async (sock, { payload }, acknowledge) => {
     if (!sock.user.isAdmin) {
@@ -11,12 +14,13 @@ const ACTION_HANDLERS = {
         type: PREFS_SET + _ERROR,
         error: 'Unauthorized',
       })
+      return
     }
 
     await Prefs.set(payload.key, payload.data)
     log.info('%s (%s) set pref %s = %s', sock.user.name, sock.id, payload.key, payload.data)
 
-    await pushPrefs(sock)
+    await pushPrefs(sock, payload.key)
   },
   [PREFS_PATH_SET_PRIORITY]: async (sock, { payload }, acknowledge) => {
     if (!sock.user.isAdmin) {
@@ -24,6 +28,7 @@ const ACTION_HANDLERS = {
         type: PREFS_PATH_SET_PRIORITY + _ERROR,
         error: 'Unauthorized',
       })
+      return
     }
 
     await Prefs.setPathPriority(payload)
@@ -41,22 +46,35 @@ const ACTION_HANDLERS = {
   },
 }
 
-// helper to push prefs to admins
-const pushPrefs = async (sock) => {
-  const admins = []
+// helper to push prefs to admins (and public prefs to all users)
+const pushPrefs = async (sock, changedKey?: string) => {
+  const prefs = await Prefs.get()
 
+  // Push full prefs to admins
   for (const s of sock.server.sockets.sockets.values()) {
     if (s.user && s.user.isAdmin) {
-      admins.push(s.id)
-      sock.server.to(s.id)
+      s.emit('action', {
+        type: PREFS_PUSH,
+        payload: prefs,
+      })
     }
   }
 
-  if (admins.length) {
-    sock.server.emit('action', {
-      type: PREFS_PUSH,
-      payload: await Prefs.get(),
-    })
+  // If a public pref changed, push public prefs to all non-admin users
+  if (!changedKey || PUBLIC_PREFS.includes(changedKey)) {
+    const publicPrefs = {
+      isAutoplayEnabled: prefs.isAutoplayEnabled,
+      isPlaybackControlPublic: prefs.isPlaybackControlPublic,
+    }
+
+    for (const s of sock.server.sockets.sockets.values()) {
+      if (s.user && !s.user.isAdmin) {
+        s.emit('action', {
+          type: PREFS_PUSH,
+          payload: publicPrefs,
+        })
+      }
+    }
   }
 }
 
