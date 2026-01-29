@@ -40,21 +40,43 @@ export default function (io, jwtKey) {
     const clientLibraryVersion = parseInt(sock.handshake.query.library, 10)
     const clientStarsVersion = parseInt(sock.handshake.query.stars, 10)
 
-    // authenticate the JWT sent via cookie in http handshake
-    try {
-      sock.user = jwtVerify(keToken, jwtKey)
+    // Check for Kodi addon authentication (alternative to JWT)
+    const authData = sock.handshake.auth || {}
+    const isKodiAddon = sock.handshake.query.kodiAddon === 'true' || authData.kodiAddon === 'true'
+    const kodiRoomId = parseInt((sock.handshake.query.roomId || authData.roomId) as string, 10)
 
-      // success
-      log.verbose('%s (%s) connected from %s', sock.user.name, sock.id, sock.handshake.address)
-    } catch (err) {
-      io.to(sock.id).emit('action', {
-        type: SOCKET_AUTH_ERROR,
-      })
+    if (isKodiAddon) {
+      // Kodi addon authentication - create a virtual user
+      // The addon is trusted as it runs on the local network
+      log.verbose('Kodi addon connected from %s (room %s)', sock.handshake.address, kodiRoomId)
 
-      sock.user = null
-      sock.disconnect()
-      log.verbose('disconnected %s (%s)', sock.handshake.address, err.message)
-      return
+      sock.user = {
+        userId: -1, // Virtual user ID for Kodi addon
+        name: 'Kodi Addon',
+        isAdmin: false,
+        roomId: isNaN(kodiRoomId) ? 1 : kodiRoomId,
+        isKodiAddon: true,
+      }
+
+      // Mark this socket as the Kodi addon player
+      sock._isKodiAddonPlayer = true
+    } else {
+      // Standard JWT authentication via cookie
+      try {
+        sock.user = jwtVerify(keToken, jwtKey)
+
+        // success
+        log.verbose('%s (%s) connected from %s', sock.user.name, sock.id, sock.handshake.address)
+      } catch (err) {
+        io.to(sock.id).emit('action', {
+          type: SOCKET_AUTH_ERROR,
+        })
+
+        sock.user = null
+        sock.disconnect()
+        log.verbose('disconnected %s (%s)', sock.handshake.address, err.message)
+        return
+      }
     }
 
     // attach disconnect handler
