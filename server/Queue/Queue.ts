@@ -8,7 +8,7 @@ class Queue {
   /**
    * Add a songId to a room's queue
    */
-  static add ({ roomId, songId, userId }: { roomId: number, songId: number, userId: number }): void {
+  static add ({ roomId, songId, userId, coSingers = null }: { roomId: number, songId: number, userId: number, coSingers?: string[] | null }): void {
     // Get the last position in the queue for this room
     const lastQuery = sql`
       SELECT position
@@ -28,6 +28,10 @@ class Queue {
     fields.set('songId', songId)
     fields.set('userId', userId)
     fields.set('position', newPosition)
+    // coSingers stored as JSON string (ex: '["Alice", "Bob"]')
+    if (coSingers && Array.isArray(coSingers) && coSingers.length > 0) {
+      fields.set('coSingers', JSON.stringify(coSingers))
+    }
 
     const query = sql`
       INSERT INTO queue ${sql.tuple(Array.from(fields.keys()).map(sql.column))}
@@ -49,7 +53,7 @@ class Queue {
     const pathData = new Map()
 
     const query = sql`
-      SELECT queueId, songId, userId, position,
+      SELECT queueId, songId, userId, position, coSingers,
         media.mediaId, media.relPath, media.rgTrackGain, media.rgTrackPeak,
         users.name AS userDisplayName, users.dateUpdated AS userDateUpdated,
         paths.pathId, paths.data AS pathData,
@@ -70,6 +74,7 @@ class Queue {
       songId: number
       userId: number
       position: string
+      coSingers: string | null
       mediaId: number
       relPath: string
       rgTrackGain: number
@@ -79,6 +84,8 @@ class Queue {
       pathId: number
       pathData: string
       isPreferred: number
+      title: string
+      artist: string
     }>(String(query), query.parameters)
 
     for (const row of rows) {
@@ -91,6 +98,8 @@ class Queue {
       entities[row.queueId] = row
       entities[row.queueId].mediaType = this.getType(row.relPath)
       entities[row.queueId].isVideoKeyingEnabled = !!pathPrefs?.isVideoKeyingEnabled
+      // Parse coSingers JSON string to array
+      entities[row.queueId].coSingers = row.coSingers ? JSON.parse(row.coSingers) : []
 
       // don't send over the wire
       delete entities[row.queueId].relPath
@@ -192,6 +201,26 @@ class Queue {
     `
     const res = db.get<{ count: number }>(String(query), query.parameters)
     return res!.count === ids.length
+  }
+
+  /**
+   * Update co-singers for a queue item
+   */
+  static updateCoSingers ({ queueId, coSingers }: { queueId: number, coSingers: string[] }): void {
+    const coSingersJson = coSingers && coSingers.length > 0
+      ? JSON.stringify(coSingers)
+      : null
+
+    const query = sql`
+      UPDATE queue
+      SET coSingers = ${coSingersJson}
+      WHERE queueId = ${queueId}
+    `
+    const res = db.run(String(query), query.parameters)
+
+    if (!res.changes) {
+      throw new Error(`Could not update queueId: ${queueId}`)
+    }
   }
 
   /**
