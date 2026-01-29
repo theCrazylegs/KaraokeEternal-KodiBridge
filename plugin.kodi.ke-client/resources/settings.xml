@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings version="2">
+    <section id="connection">
+        <category id="server" label="Serveur KE">
+            <group id="1" label="Connexion">
+                <setting id="server_ip" type="string" label="Adresse IP du serveur" help="Adresse IP de votre serveur Karaoke Eternal">
+                    <level>0</level>
+                    <default>192.168.1.100</default>
+                    <control type="edit" format="string" />
+                </setting>
+                <setting id="server_port" type="integer" label="Port du serveur" help="Port HTTP du serveur (defaut: 8080)">
+                    <level>0</level>
+                    <default>8080</default>
+                    <control type="edit" format="integer" />
+                    <constraints>
+                        <minimum>1</minimum>
+                        <maximum>65535</maximum>
+                    </constraints>
+                </setting>
+                <setting id="room_id" type="integer" label="Room ID" help="Numero de la room KE a rejoindre (defaut: 1)">
+                    <level>0</level>
+                    <default>1</default>
+                    <control type="edit" format="integer" />
+                    <constraints>
+                        <minimum>1</minimum>
+                        <maximum>999</maximum>
+                    </constraints>
+                </setting>
+            </group>
+        </category>
+    </section>
+</settings>
