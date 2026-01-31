@@ -21,6 +21,7 @@ import mediaRouter from './Media/router.js'
 import prefsRouter from './Prefs/router.js'
 import roomsRouter from './Rooms/router.js'
 import userRouter from './User/router.js'
+import kodiRouter from './Kodi/router.js'
 import pushQueuesAndLibrary from './lib/pushQueuesAndLibrary.js'
 import { Server as SocketIO } from 'socket.io'
 import socketActions from './socket.js'
@@ -183,6 +184,7 @@ async function serverWorker ({ env, startScanner, stopScanner, shutdownHandlers 
   baseRouter.use(prefsRouter.routes())
   baseRouter.use(roomsRouter.routes())
   baseRouter.use(userRouter.routes())
+  baseRouter.use(kodiRouter.routes())
   app.use(baseRouter.routes())
 
   // serve index.html with dynamic base tag at the main SPA routes

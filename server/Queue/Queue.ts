@@ -53,9 +53,12 @@ class Queue {
         media.mediaId, media.relPath, media.rgTrackGain, media.rgTrackPeak,
         users.name AS userDisplayName, users.dateUpdated AS userDateUpdated,
         paths.pathId, paths.data AS pathData,
+        songs.title, artists.name AS artist,
         MAX(isPreferred) AS isPreferred
       FROM queue
         INNER JOIN users USING(userId)
+        INNER JOIN songs USING(songId)
+        INNER JOIN artists USING(artistId)
         INNER JOIN media USING(songId)
         INNER JOIN paths USING(pathId)
       WHERE roomId = ${roomId}
