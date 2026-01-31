@@ -1,0 +1,33 @@
+# Kodi Media Center language file
+# Addon Name: Karaoke Eternal Client
+# Addon id: plugin.kodi.ke-client
+
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fr\n"
+
+msgctxt "#32000"
+msgid "Up next"
+msgstr "A suivre"
+
+msgctxt "#32001"
+msgid "Up next:"
+msgstr "A suivre :"
+
+msgctxt "#32002"
+msgid "WAITING..."
+msgstr "EN ATTENTE..."
+
+msgctxt "#32003"
+msgid "waiting"
+msgstr "en attente"
+
+msgctxt "#32004"
+msgid "WAITING FOR A SINGER"
+msgstr "EN ATTENTE D'UN CHANTEUR"
+
+msgctxt "#32005"
+msgid "Unknown"
+msgstr "Inconnu"

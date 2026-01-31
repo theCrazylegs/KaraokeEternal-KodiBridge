@@ -136,13 +136,16 @@ Write-Step "Déploiement fichiers..."
 $DEST = "$($Config.KodiDataDir)/addons/$($Config.AddonID)/"
 
 # Fichiers principaux
-@("addon.xml", "service.py", "icon.png", "white.png") | ForEach-Object {
+@("addon.xml", "service.py", "icon.png", "white.png", "waiting_screen.png") | ForEach-Object {
     & $Config.ADBPath push $_ "$DEST" | Out-Null
     Write-OK "$_"
 }
 
 & $Config.ADBPath push "resources/settings.xml" "$DEST/resources/" | Out-Null
 Write-OK "settings.xml"
+
+& $Config.ADBPath push "resources/language/" "$DEST/resources/" | Out-Null
+Write-OK "language/ (i18n)"
 
 & $Config.ADBPath push "lib/" "$DEST" | Out-Null
 Write-OK "lib/ (socket.io)"

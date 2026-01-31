@@ -1,20 +1,20 @@
 """
 Karaoke Eternal Client for Kodi
-Client Socket.io natif pour communiquer avec le serveur KE.
+Native Socket.io client to communicate with the KE server.
 
-L'add-on se connecte au serveur KE via Socket.io et :
-- Recoit les commandes (play, pause, next) depuis l'interface web
-- Envoie l'etat de lecture (position, fin de chanson)
-- Affiche un ecran d'attente (image fixe) quand rien ne joue
+The addon connects to the KE server via Socket.io and:
+- Receives commands (play, pause, next) from the web interface
+- Sends playback state (position, end of song)
+- Displays a waiting screen (static image) when nothing is playing
 """
 import sys
 import os
 import time
 import json
 
-# IMPORTANT: Patch signal avant d'importer socketio
-# Kodi execute l'addon dans un thread secondaire, pas le thread principal.
-# socketio/engineio utilisent signal.signal() qui ne fonctionne que dans le main thread.
+# IMPORTANT: Patch signal before importing socketio
+# Kodi runs the addon in a secondary thread, not the main thread.
+# socketio/engineio use signal.signal() which only works in the main thread.
 import signal
 _original_signal = signal.signal
 def _patched_signal(signalnum, handler):
@@ -29,11 +29,13 @@ import xbmcgui
 import xbmcaddon
 import xbmcvfs
 try:
-    from urllib.request import urlopen
+    from urllib.request import Request, urlopen
+    from urllib.parse import quote
 except ImportError:
-    from urllib2 import urlopen
+    from urllib2 import Request, urlopen
+    from urllib import quote
 
-# Ajouter le dossier lib/ au path pour les imports
+# Add lib/ folder to path for imports
 ADDON_PATH = xbmcaddon.Addon().getAddonInfo('path')
 LIB_PATH = os.path.join(ADDON_PATH, 'lib')
 if LIB_PATH not in sys.path:
@@ -45,7 +47,15 @@ ADDON_ID = "plugin.kodi.ke-client"
 STATUS_INTERVAL = 1
 NOTIFICATION_BEFORE_END = 15
 
-# Types d'actions Socket.io
+# Localized string IDs
+STR_UP_NEXT = 32000
+STR_UP_NEXT_COLON = 32001
+STR_WAITING = 32002
+STR_WAITING_LOWER = 32003
+STR_WAITING_FOR_SINGER = 32004
+STR_UNKNOWN = 32005
+
+# Socket.io action types
 PLAYER_CMD_NEXT = 'player/CMD_NEXT'
 PLAYER_CMD_OPTIONS = 'player/CMD_OPTIONS'
 PLAYER_CMD_PAUSE = 'player/CMD_PAUSE'
@@ -58,40 +68,40 @@ PLAYER_EMIT_LEAVE = 'server/PLAYER_EMIT_LEAVE'
 
 
 def log(message, level=xbmc.LOGINFO):
-    """Log un message avec le prefixe de l'addon."""
+    """Log a message with the addon prefix."""
     xbmc.log(f"[{ADDON_ID}] {message}", level)
 
 
 class KEPlayer(xbmc.Player):
-    """Player Kodi personnalise pour detecter les evenements de lecture."""
+    """Custom Kodi player to detect playback events."""
 
     def __init__(self, service):
         super().__init__()
         self.service = service
 
     def onPlayBackStarted(self):
-        log("Lecture demarree")
+        log("Playback started")
         self.service.on_playback_started()
 
     def onPlayBackEnded(self):
-        log("Lecture terminee")
+        log("Playback ended")
         self.service.on_playback_ended()
 
     def onPlayBackStopped(self):
-        log("Lecture arretee")
+        log("Playback stopped")
         self.service.on_playback_stopped()
 
     def onPlayBackPaused(self):
-        log("Lecture en pause")
+        log("Playback paused")
         self.service.on_playback_paused()
 
     def onPlayBackResumed(self):
-        log("Lecture reprise")
+        log("Playback resumed")
         self.service.on_playback_resumed()
 
 
 class KEService(xbmc.Monitor):
-    """Service principal qui gere la connexion Socket.io et le player."""
+    """Main service that manages the Socket.io connection and player."""
 
     def __init__(self):
         super().__init__()
@@ -102,7 +112,7 @@ class KEService(xbmc.Monitor):
         self.connected = False
         self.room_id = None
 
-        # Etat du player
+        # Player state
         self.state = {
             'queueId': -1,
             'isPlaying': False,
@@ -114,33 +124,60 @@ class KEService(xbmc.Monitor):
             'nextUserId': None,
         }
 
-        # Queue des chansons
+        # Song queue
         self.queue = {'result': [], 'entities': {}}
         self.current_media_url = None
 
-        # Tracking pour notification "Up Next"
+        # Tracking for "Up Next" notification
         self.media_duration = 0
         self.notification_shown = False
 
-        # Chemin de l'image d'attente telechargee
+        # Path to downloaded idle image
         self._idle_image_path = None
         self._avatar_cache = {}
 
-        # Item en attente (apres NEXT, avant PLAY)
+        # Pending item (after NEXT, before PLAY)
         self.pending_item = None
 
-        log("Service initialise")
+        # JWT token for authentication
+        self.token = None
+
+        log("Service initialized")
 
     def _get_server_url(self):
-        """Construit l'URL du serveur a partir des settings."""
+        """Build the server URL from settings."""
         ip = self.addon.getSetting('server_ip')
         port = self.addon.getSetting('server_port')
         if not ip or not port:
             return None
         return f"http://{ip}:{port}"
 
+    def _get_token(self):
+        """Get a JWT token from the server for authentication."""
+        server_url = self._get_server_url()
+        if not server_url:
+            return None
+
+        room_id = int(self.addon.getSetting('room_id') or '1')
+
+        try:
+            url = f"{server_url}/api/kodi/token"
+            data = json.dumps({'roomId': room_id}).encode('utf-8')
+            req = Request(url, data=data, headers={'Content-Type': 'application/json'})
+            response = urlopen(req, timeout=10)
+
+            if response.getcode() == 200:
+                result = json.loads(response.read().decode('utf-8'))
+                self.token = result.get('token')
+                log(f"JWT token obtained (expires in {result.get('expiresIn', 0)}s)")
+                return self.token
+        except Exception as e:
+            log(f"Error getting token: {e}", xbmc.LOGERROR)
+
+        return None
+
     def _setup_socketio(self):
-        """Configure le client Socket.io."""
+        """Configure the Socket.io client."""
         self.sio = socketio.Client(
             reconnection=True,
             reconnection_attempts=0,
@@ -152,50 +189,50 @@ class KEService(xbmc.Monitor):
 
         @self.sio.event
         def connect():
-            log("Socket.io connecte!")
+            log("Socket.io connected!")
             self.connected = True
             self.room_id = 1
             self._emit_status()
 
         @self.sio.event
         def disconnect():
-            log("Socket.io deconnecte")
+            log("Socket.io disconnected")
             self.connected = False
 
         @self.sio.event
         def connect_error(data):
-            log(f"Erreur de connexion Socket.io: {data}", xbmc.LOGWARNING)
+            log(f"Socket.io connection error: {data}", xbmc.LOGWARNING)
 
         @self.sio.on('action')
         def on_action(data):
-            """Traite les actions recues du serveur."""
+            """Handle actions received from the server."""
             action_type = data.get('type', '')
             payload = data.get('payload', {})
 
             if action_type == PLAYER_CMD_PLAY:
-                log("Commande PLAY recue")
+                log("PLAY command received")
                 self._handle_play()
             elif action_type == PLAYER_CMD_PAUSE:
-                log("Commande PAUSE recue")
+                log("PAUSE command received")
                 self._handle_pause()
             elif action_type == PLAYER_CMD_NEXT:
-                log("Commande NEXT recue")
+                log("NEXT command received")
                 self._handle_next()
             elif action_type == PLAYER_CMD_REPLAY:
                 queue_id = payload.get('queueId')
-                log(f"Commande REPLAY recue: queueId={queue_id}")
+                log(f"REPLAY command received: queueId={queue_id}")
                 self._handle_replay(queue_id)
             elif action_type == PLAYER_CMD_VOLUME:
                 volume = payload
-                log(f"Commande VOLUME recue: {volume}")
+                log(f"VOLUME command received: {volume}")
                 self._handle_volume(volume)
             elif action_type == QUEUE_PUSH:
-                log(f"Queue mise a jour: {len(payload.get('result', []))} elements")
+                log(f"Queue updated: {len(payload.get('result', []))} items")
                 self.queue = payload
                 self._update_overlay_info()
 
     def _emit_status(self):
-        """Envoie l'etat actuel du player au serveur."""
+        """Send the current player state to the server."""
         if not self.connected or not self.sio:
             return
 
@@ -223,10 +260,10 @@ class KEService(xbmc.Monitor):
                 'payload': status
             })
         except Exception as e:
-            log(f"Erreur envoi status: {e}", xbmc.LOGWARNING)
+            log(f"Error sending status: {e}", xbmc.LOGWARNING)
 
     def _get_next_queue_item(self):
-        """Recupere le prochain element de la queue."""
+        """Get the next item in the queue."""
         if not self.queue['result']:
             return None
 
@@ -245,40 +282,40 @@ class KEService(xbmc.Monitor):
         return None
 
     def _handle_play(self):
-        """Gere la commande PLAY."""
-        # Si un item est en attente (apres NEXT), le jouer
+        """Handle the PLAY command."""
+        # If an item is pending (after NEXT), play it
         if self.pending_item:
-            log(f"Lecture item en attente: queueId={self.pending_item.get('queueId')}")
+            log(f"Playing pending item: queueId={self.pending_item.get('queueId')}")
             item = self.pending_item
             self.pending_item = None
             self._play_item(item, item.get('queueId'))
         elif self.player.isPlaying():
-            # Si deja en lecture, c'est un resume (toggle pause)
+            # If already playing, this is a resume (toggle pause)
             self.player.pause()
             self.state['isPlaying'] = True
         else:
-            # Sinon, charger le prochain
+            # Otherwise, load the next item
             self._load_next()
 
     def _handle_pause(self):
-        """Gere la commande PAUSE."""
+        """Handle the PAUSE command."""
         if self.player.isPlaying():
             self.player.pause()
             self.state['isPlaying'] = False
             self._emit_status()
 
     def _handle_next(self):
-        """Gere la commande NEXT - passe a l'item suivant et affiche waiting screen."""
-        # Arreter la lecture en cours
+        """Handle the NEXT command - skip to next item and show waiting screen."""
+        # Stop current playback
         if self.player.isPlaying():
             self.player.stop()
 
-        # Recuperer le prochain item
+        # Get the next item
         next_item = self._get_next_queue_item()
 
         if not next_item:
-            # Fin de la queue
-            log("NEXT: Fin de la queue")
+            # End of queue
+            log("NEXT: End of queue")
             self.state['isAtQueueEnd'] = True
             self.state['isPlaying'] = False
             self.pending_item = None
@@ -286,40 +323,40 @@ class KEService(xbmc.Monitor):
             self._emit_status()
             return
 
-        # Stocker l'item en attente (sera joue au prochain PLAY)
+        # Store the pending item (will be played on next PLAY)
         self.pending_item = next_item
-        log(f"NEXT: Item en attente - {next_item.get('userDisplayName')} - {next_item.get('title')}")
+        log(f"NEXT: Pending item - {next_item.get('userDisplayName')} - {next_item.get('title')}")
 
-        # Avancer le queueId pour que l'overlay montre les bonnes infos
-        # Mais on ne joue pas encore - on attend PLAY
+        # Advance queueId so the overlay shows the right info
+        # But don't play yet - wait for PLAY
         self.state['queueId'] = next_item.get('queueId')
         self.state['isPlaying'] = False
         self.state['isAtQueueEnd'] = False
         self.state['position'] = 0
 
-        # Afficher l'ecran d'attente avec les infos du prochain
+        # Show waiting screen with next item info
         self._show_waiting_screen()
         self._emit_status()
 
     def _handle_replay(self, queue_id):
-        """Gere la commande REPLAY."""
+        """Handle the REPLAY command."""
         str_id = str(queue_id) if queue_id else None
         if str_id and str_id in self.queue['entities']:
             item = self.queue['entities'][str_id]
             self._play_item(item, queue_id)
 
     def _handle_volume(self, volume):
-        """Gere la commande VOLUME."""
+        """Handle the VOLUME command."""
         self.state['volume'] = volume
         kodi_volume = int(volume * 100)
         xbmc.executebuiltin(f'SetVolume({kodi_volume})')
 
     def _load_next(self):
-        """Charge et joue la prochaine chanson."""
+        """Load and play the next song."""
         next_item = self._get_next_queue_item()
 
         if not next_item:
-            log("Fin de la queue")
+            log("End of queue")
             self.state['isAtQueueEnd'] = True
             self.state['isPlaying'] = False
             self.state['queueId'] = -1
@@ -331,17 +368,25 @@ class KEService(xbmc.Monitor):
         self._play_item(next_item, queue_id)
 
     def _play_item(self, item, queue_id):
-        """Joue un element de la queue."""
+        """Play a queue item."""
         server_url = self._get_server_url()
         if not server_url:
-            log("Pas d'URL serveur configuree", xbmc.LOGERROR)
+            log("Server URL not configured", xbmc.LOGERROR)
+            return
+
+        if not self.token:
+            log("No JWT token for streaming", xbmc.LOGERROR)
             return
 
         media_id = item.get('mediaId')
         media_type = item.get('mediaType', 'mp4')
-        stream_url = f"{server_url}/api/kodi/stream/{media_id}"
 
-        log(f"Lecture de: {stream_url} (queueId={queue_id})")
+        # Build URL with authentication header
+        # Kodi supports: url|Header=Value (no URL encoding)
+        base_url = f"{server_url}/api/kodi/stream/{media_id}"
+        stream_url = f"{base_url}|Authorization=Bearer {self.token}"
+
+        log(f"Playing: {base_url} (queueId={queue_id})")
 
         try:
             self._hide_waiting_screen()
@@ -362,32 +407,32 @@ class KEService(xbmc.Monitor):
             self._emit_status()
 
         except Exception as e:
-            log(f"Erreur lecture: {e}", xbmc.LOGERROR)
+            log(f"Playback error: {e}", xbmc.LOGERROR)
 
     def on_playback_started(self):
         self.state['isPlaying'] = True
         self._hide_waiting_screen()
-        self.notification_shown = False  # Reset en dehors du try
+        self.notification_shown = False  # Reset outside try block
         self.media_duration = 0
 
-        # Attendre un peu que Kodi ait analyse le media
+        # Wait a bit for Kodi to analyze the media
         xbmc.sleep(500)
 
         try:
             self.media_duration = self.player.getTotalTime()
-            log(f"Duree du media: {self.media_duration:.1f}s")
+            log(f"Media duration: {self.media_duration:.1f}s")
         except Exception as e:
-            log(f"Erreur getTotalTime: {e}", xbmc.LOGWARNING)
+            log(f"Error getting total time: {e}", xbmc.LOGWARNING)
             self.media_duration = 0
 
         self._emit_status()
 
     def on_playback_ended(self):
-        log("Chanson terminee")
+        log("Song ended")
         self.state['isPlaying'] = False
         self.notification_shown = False
         self.media_duration = 0
-        self.pending_item = None  # Reset - sera recalcule au prochain PLAY
+        self.pending_item = None  # Reset - will be recalculated on next PLAY
         self._show_waiting_screen()
         self._emit_status()
 
@@ -395,8 +440,8 @@ class KEService(xbmc.Monitor):
         self.state['isPlaying'] = False
         self.notification_shown = False
         self.media_duration = 0
-        # Ne pas reset pending_item ici car on_playback_stopped est appele par _handle_next
-        # apres player.stop() - on veut garder le pending_item
+        # Don't reset pending_item here because on_playback_stopped is called by _handle_next
+        # after player.stop() - we want to keep the pending_item
         self._show_waiting_screen()
         self._emit_status()
 
@@ -409,18 +454,18 @@ class KEService(xbmc.Monitor):
         self._emit_status()
 
     def _check_upnext_notification(self):
-        """Verifie si on doit afficher la notification 'Up Next'."""
+        """Check if we should display the 'Up Next' notification."""
         if self.notification_shown:
             return
         if not self.state['isPlaying']:
             return
         if self.media_duration <= 0:
-            # Essayer de recuperer la duree si pas encore disponible
+            # Try to get duration if not yet available
             try:
                 if self.player.isPlaying():
                     self.media_duration = self.player.getTotalTime()
                     if self.media_duration > 0:
-                        log(f"Duree recuperee tardivement: {self.media_duration:.1f}s")
+                        log(f"Duration retrieved late: {self.media_duration:.1f}s")
             except:
                 pass
             if self.media_duration <= 0:
@@ -435,96 +480,86 @@ class KEService(xbmc.Monitor):
                 next_item = self._get_next_queue_item()
 
                 if next_item:
-                    singer = next_item.get('userDisplayName', 'Inconnu')
+                    singer = next_item.get('userDisplayName', self.addon.getLocalizedString(STR_UNKNOWN))
                     title = next_item.get('title', '')
                     artist = next_item.get('artist', '')
                     co_singers = next_item.get('coSingers', [])
 
-                    # Ajoute les co-chanteurs au nom du chanteur
+                    # Add co-singers to the singer name
                     singer_display = singer
                     if co_singers and len(co_singers) > 0:
                         singer_display += ' + ' + ', '.join(co_singers)
 
-                    heading = "A suivre"
+                    heading = self.addon.getLocalizedString(STR_UP_NEXT)
                     message = f"{singer_display}: {title}"
                     if artist:
                         message += f" ({artist})"
 
-                    log(f"Affichage notification Up Next: {remaining:.1f}s restantes")
+                    log(f"Showing Up Next notification: {remaining:.1f}s remaining")
                     xbmcgui.Dialog().notification(
                         heading,
                         message,
                         xbmcgui.NOTIFICATION_INFO,
                         5000
                     )
-                    log(f"Notification Up Next: {singer_display} - {title}")
+                    log(f"Up Next notification: {singer_display} - {title}")
                 else:
-                    log("Pas de prochain item pour notification Up Next")
+                    log("No next item for Up Next notification")
         except Exception as e:
-            log(f"Erreur check notification: {e}", xbmc.LOGWARNING)
+            log(f"Error checking notification: {e}", xbmc.LOGWARNING)
 
-    def _download_idle_image(self):
-        """Telecharge l'image d'attente depuis le serveur."""
+    def _get_idle_image(self):
+        """Return the path to the idle image included in the addon."""
         if self._idle_image_path:
             return self._idle_image_path
 
-        try:
-            server_url = self._get_server_url()
-            if not server_url:
-                return None
-
-            local_path = xbmcvfs.translatePath("special://temp/ke_waiting_screen.png")
-            idle_url = f"{server_url}/api/kodi/idle"
-
-            log(f"Telechargement image idle: {idle_url}")
-            response = urlopen(idle_url, timeout=10)
-            if response.getcode() == 200:
-                data = response.read()
-                with xbmcvfs.File(local_path, 'wb') as f:
-                    f.write(data)
-                self._idle_image_path = local_path
-                log(f"Image idle telechargee: {local_path}")
-                return local_path
-        except Exception as e:
-            log(f"Erreur telechargement image idle: {e}", xbmc.LOGWARNING)
-        return None
+        # Use waiting_screen.png included in the addon
+        addon_path = xbmcvfs.translatePath(xbmcaddon.Addon().getAddonInfo('path'))
+        self._idle_image_path = os.path.join(addon_path, 'waiting_screen.png')
+        log(f"Idle image: {self._idle_image_path}")
+        return self._idle_image_path
 
     def _download_avatar(self, user_id, server_url):
-        """Telecharge l'avatar de l'utilisateur."""
+        """Download the user avatar via the Kodi API with auth."""
         try:
             if user_id in self._avatar_cache:
                 return self._avatar_cache[user_id]
 
             local_path = xbmcvfs.translatePath(f"special://temp/ke_avatar_{user_id}.png")
-            avatar_url = f"{server_url}/api/user/{user_id}/image"
+            avatar_url = f"{server_url}/api/kodi/avatar/{user_id}"
 
-            response = urlopen(avatar_url, timeout=5)
+            req = Request(avatar_url)
+            if self.token:
+                req.add_header('Authorization', f'Bearer {self.token}')
+
+            response = urlopen(req, timeout=5)
             if response.getcode() == 200:
                 data = response.read()
                 with xbmcvfs.File(local_path, 'wb') as f:
                     f.write(data)
                 self._avatar_cache[user_id] = local_path
                 return local_path
-        except:
+        except Exception as e:
+            log(f"Error downloading avatar {user_id}: {e}", xbmc.LOGWARNING)
             self._avatar_cache[user_id] = ''
         return ''
 
     def _show_waiting_screen(self):
-        """Affiche l'ecran d'attente avec image fixe et infos."""
+        """Display the waiting screen with static image and info."""
         if self.window is not None:
             return
 
         try:
-            # Telecharger l'image idle si pas deja fait
-            idle_image = self._download_idle_image()
+            # Get idle image
+            idle_image = self._get_idle_image()
             if not idle_image:
-                log("Pas d'image idle disponible", xbmc.LOGWARNING)
+                log("No idle image available", xbmc.LOGWARNING)
                 return
 
-            # Creer un WindowDialog plein ecran
+            # Create a fullscreen WindowDialog
             self.window = xbmcgui.WindowDialog()
 
-            # Image de fond (plein ecran 1280x720)
+            # Background image (fullscreen 1280x720)
             self.bg_image = xbmcgui.ControlImage(
                 0, 0, 1280, 720,
                 idle_image,
@@ -532,17 +567,17 @@ class KEService(xbmc.Monitor):
             )
             self.window.addControl(self.bg_image)
 
-            # Bandeau semi-transparent en bas (noir 80% opacite)
-            # On utilise white.png (image blanche) teintee en noir transparent
+            # Semi-transparent banner at bottom (black 80% opacity)
+            # Use white.png (white image) tinted to transparent black
             white_img = os.path.join(ADDON_PATH, 'white.png')
             self.info_bg = xbmcgui.ControlImage(
                 0, 580, 1280, 140,
                 white_img,
-                colorDiffuse='80000000'  # noir 50% opaque (plus transparent)
+                colorDiffuse='80000000'  # black 50% opaque (more transparent)
             )
             self.window.addControl(self.info_bg)
 
-            # Avatar (image ronde a gauche)
+            # Avatar (round image on the left)
             self.avatar_img = xbmcgui.ControlImage(
                 30, 595, 110, 110,
                 '',
@@ -550,53 +585,53 @@ class KEService(xbmc.Monitor):
             )
             self.window.addControl(self.avatar_img)
 
-            # Label "A suivre" (petit texte au dessus)
+            # "Up next" label (small text above)
             self.label_next = xbmcgui.ControlLabel(
                 160, 590, 200, 25,
-                'A suivre :',
+                self.addon.getLocalizedString(STR_UP_NEXT_COLON),
                 font='font12',
                 textColor='FFAAAAAA'
             )
             self.window.addControl(self.label_next)
 
-            # Nom du chanteur (MAJUSCULES - blanc)
+            # Singer name (UPPERCASE - white)
             self.label_singer = xbmcgui.ControlLabel(
                 160, 615, 700, 45,
-                'EN ATTENTE...',
+                self.addon.getLocalizedString(STR_WAITING),
                 font='font14',
                 textColor='FFFFFFFF'
             )
             self.window.addControl(self.label_singer)
 
-            # Titre + Artiste (violet #FD80D8)
+            # Title + Artist (purple #FD80D8)
             self.label_title = xbmcgui.ControlLabel(
                 160, 660, 700, 40,
                 '',
                 font='font14',
-                textColor='FFFD80D8'  # #FD80D8 avec alpha 100%
+                textColor='FFFD80D8'  # #FD80D8 with 100% alpha
             )
             self.window.addControl(self.label_title)
 
-            # Compteur (a droite, violet #FD80D8)
+            # Counter (right side, purple #FD80D8)
             self.label_count = xbmcgui.ControlLabel(
                 950, 600, 300, 60,
                 '0',
                 font='font14',
-                textColor='FFFD80D8',  # #FD80D8 avec alpha 100%
+                textColor='FFFD80D8',  # #FD80D8 with 100% alpha
                 alignment=2  # right align
             )
             self.window.addControl(self.label_count)
 
             self.label_count_text = xbmcgui.ControlLabel(
                 950, 665, 300, 35,
-                'en attente',
+                self.addon.getLocalizedString(STR_WAITING_LOWER),
                 font='font14',
                 textColor='FFE0E0E0',
                 alignment=2
             )
             self.window.addControl(self.label_count_text)
 
-            # Label centre pour "EN ATTENTE D'UN CHANTEUR" (queue vide)
+            # Centered label for "WAITING FOR A SINGER" (empty queue)
             self.label_empty = xbmcgui.ControlLabel(
                 0, 630, 1280, 50,
                 '',
@@ -608,15 +643,15 @@ class KEService(xbmc.Monitor):
 
             self.window.show()
             self._update_overlay_info()
-            log("Ecran d'attente affiche")
+            log("Waiting screen displayed")
 
         except Exception as e:
-            log(f"Erreur affichage ecran: {e}", xbmc.LOGERROR)
+            log(f"Error displaying screen: {e}", xbmc.LOGERROR)
             import traceback
             log(traceback.format_exc(), xbmc.LOGERROR)
 
     def _hide_waiting_screen(self):
-        """Cache l'ecran d'attente."""
+        """Hide the waiting screen."""
         if self.window is not None:
             try:
                 self.window.close()
@@ -634,20 +669,20 @@ class KEService(xbmc.Monitor):
             self.label_empty = None
 
     def _update_overlay_info(self):
-        """Met a jour les infos affichees sur l'overlay."""
-        # Si un item est en attente (apres NEXT), afficher SES infos
-        # Sinon, afficher le prochain dans la queue
+        """Update the info displayed on the overlay."""
+        # If an item is pending (after NEXT), show ITS info
+        # Otherwise, show the next item in the queue
         if self.pending_item:
             display_item = self.pending_item
         else:
             display_item = self._get_next_queue_item()
 
-        # Verifier si la queue est vide (pas d'item a afficher)
+        # Check if queue is empty (no item to display)
         queue_is_empty = display_item is None
 
         if queue_is_empty:
-            # Mode "attente d'un chanteur" - pas de chanson dans la queue
-            singer_display = 'EN ATTENTE D\'UN CHANTEUR'
+            # "Waiting for a singer" mode - no songs in queue
+            singer_display = self.addon.getLocalizedString(STR_WAITING_FOR_SINGER)
             title_line = ''
             avatar_path = ''
             next_user_id = None
@@ -658,16 +693,16 @@ class KEService(xbmc.Monitor):
             next_user_id = display_item.get('userId')
             co_singers = display_item.get('coSingers', [])
 
-            # Formatage: Singer en MAJUSCULES + co-chanteurs
+            # Format: Singer in UPPERCASE + co-singers
             if next_singer:
                 singer_display = next_singer.upper()
                 if co_singers and len(co_singers) > 0:
-                    # Ajoute les co-chanteurs: "ALICE + Bob, Charlie"
+                    # Add co-singers: "ALICE + Bob, Charlie"
                     singer_display += ' + ' + ', '.join(co_singers)
             else:
-                singer_display = 'EN ATTENTE D\'UN CHANTEUR'
+                singer_display = self.addon.getLocalizedString(STR_WAITING_FOR_SINGER)
 
-            # Formatage: Titre (Title case) - ARTISTE (MAJUSCULES)
+            # Format: Title (Title case) - ARTIST (UPPERCASE)
             title_line = ''
             if next_title and next_artist:
                 title_line = f"{next_title.title()} - {next_artist.upper()}"
@@ -682,7 +717,7 @@ class KEService(xbmc.Monitor):
             if next_user_id and server_url:
                 avatar_path = self._download_avatar(next_user_id, server_url)
 
-        # Compteur
+        # Counter
         current_idx = -1
         if self.state['queueId'] != -1:
             try:
@@ -691,12 +726,12 @@ class KEService(xbmc.Monitor):
                 pass
         remaining = len(self.queue['result']) - current_idx - 1 if current_idx >= 0 else len(self.queue['result'])
 
-        # Mettre a jour les labels si le window existe
+        # Update labels if the window exists
         try:
             if queue_is_empty:
-                # Mode queue vide: afficher message centre, cacher le reste
+                # Empty queue mode: show centered message, hide the rest
                 if self.label_empty:
-                    self.label_empty.setLabel('EN ATTENTE D\'UN CHANTEUR')
+                    self.label_empty.setLabel(self.addon.getLocalizedString(STR_WAITING_FOR_SINGER))
                 if self.label_next:
                     self.label_next.setLabel('')
                 if self.label_singer:
@@ -710,11 +745,11 @@ class KEService(xbmc.Monitor):
                 if self.avatar_img:
                     self.avatar_img.setImage('')
             else:
-                # Mode normal: afficher infos du prochain chanteur
+                # Normal mode: show next singer info
                 if self.label_empty:
                     self.label_empty.setLabel('')
                 if self.label_next:
-                    self.label_next.setLabel('A suivre :')
+                    self.label_next.setLabel(self.addon.getLocalizedString(STR_UP_NEXT_COLON))
                 if self.label_singer:
                     self.label_singer.setLabel(singer_display)
                 if self.label_title:
@@ -722,23 +757,29 @@ class KEService(xbmc.Monitor):
                 if self.label_count:
                     self.label_count.setLabel(str(remaining))
                 if self.label_count_text:
-                    self.label_count_text.setLabel('en attente' if remaining > 0 else '')
+                    self.label_count_text.setLabel(self.addon.getLocalizedString(STR_WAITING_LOWER) if remaining > 0 else '')
                 if self.avatar_img:
                     self.avatar_img.setImage(avatar_path if avatar_path else '')
         except:
             pass
 
     def _connect(self):
-        """Tente de se connecter au serveur."""
+        """Attempt to connect to the server."""
         server_url = self._get_server_url()
         if not server_url:
-            log("URL serveur non configuree", xbmc.LOGWARNING)
+            log("Server URL not configured", xbmc.LOGWARNING)
             return False
 
         room_id = self.addon.getSetting('room_id') or '1'
 
+        # Get a JWT token first
+        if not self.token:
+            if not self._get_token():
+                log("Unable to get JWT token", xbmc.LOGERROR)
+                return False
+
         try:
-            log(f"Connexion a {server_url} (room {room_id})...")
+            log(f"Connecting to {server_url} (room {room_id}) with JWT token...")
             self._setup_socketio()
             self.sio.connect(
                 server_url,
@@ -746,63 +787,65 @@ class KEService(xbmc.Monitor):
                 wait_timeout=10,
                 headers={},
                 socketio_path='/socket.io',
-                auth={'kodiAddon': 'true', 'roomId': room_id}
+                auth={'token': self.token}
             )
             return True
         except Exception as e:
-            log(f"Erreur connexion: {e}", xbmc.LOGWARNING)
+            log(f"Connection error: {e}", xbmc.LOGWARNING)
+            # Reset token on error to retry
+            self.token = None
             return False
 
     def run(self):
-        """Boucle principale du service."""
-        log("Demarrage du service")
+        """Main service loop."""
+        log("Service starting")
 
         ip = self.addon.getSetting('server_ip')
         port = self.addon.getSetting('server_port')
-        log(f"Configuration: serveur={ip}:{port}")
+        log(f"Configuration: server={ip}:{port}")
 
-        # Afficher l'ecran d'attente au demarrage
+        # Show waiting screen at startup
         self._show_waiting_screen()
 
-        # Tenter la connexion
+        # Attempt connection
         connection_attempts = 0
         while not self.abortRequested() and not self.connected:
             if self._connect():
                 break
             connection_attempts += 1
-            log(f"Tentative de connexion {connection_attempts}...")
+            log(f"Connection attempt {connection_attempts}...")
             if self.waitForAbort(5):
                 break
 
-        # Boucle principale
+        # Main loop
         last_status_time = 0
         while not self.abortRequested():
             try:
-                # Mettre a jour les infos de l'overlay
+                # Update overlay info
                 self._update_overlay_info()
 
-                # Verifier notification "Up Next"
+                # Check "Up Next" notification
                 self._check_upnext_notification()
 
-                # Envoyer le status periodiquement
+                # Send status periodically
                 current_time = time.time()
                 if self.connected and current_time - last_status_time >= STATUS_INTERVAL:
                     self._emit_status()
                     last_status_time = current_time
 
-                # Verifier la connexion
+                # Check connection
                 if not self.connected and self.sio:
-                    log("Reconnexion...")
+                    log("Reconnecting...")
                     self._connect()
 
             except Exception as e:
-                log(f"Erreur boucle principale: {e}", xbmc.LOGERROR)
+                log(f"Main loop error: {e}", xbmc.LOGERROR)
 
             if self.waitForAbort(0.5):
                 break
 
-        # Nettoyage
-        log("Arret du service")
+        # Cleanup
+        log("Service stopping")
         if self.sio and self.connected:
             try:
                 self.sio.emit('action', {
@@ -814,7 +857,7 @@ class KEService(xbmc.Monitor):
                 pass
 
         self._hide_waiting_screen()
-        log("Service arrete")
+        log("Service stopped")
 
 
 if __name__ == '__main__':

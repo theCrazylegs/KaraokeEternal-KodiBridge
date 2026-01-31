@@ -40,26 +40,33 @@ export default function (io, jwtKey) {
     const clientLibraryVersion = parseInt(sock.handshake.query.library, 10)
     const clientStarsVersion = parseInt(sock.handshake.query.stars, 10)
 
-    // Check for Kodi addon authentication (alternative to JWT)
+    // Check for Kodi addon authentication via Bearer token
     const authData = sock.handshake.auth || {}
-    const isKodiAddon = sock.handshake.query.kodiAddon === 'true' || authData.kodiAddon === 'true'
-    const kodiRoomId = parseInt((sock.handshake.query.roomId || authData.roomId) as string, 10)
 
-    if (isKodiAddon) {
-      // Kodi addon authentication - create a virtual user
-      // The addon is trusted as it runs on the local network
-      log.verbose('Kodi addon connected from %s (room %s)', sock.handshake.address, kodiRoomId)
+    if (authData.token) {
+      // Kodi addon authentication via JWT token
+      try {
+        const kodiUser = jwtVerify(authData.token, jwtKey)
 
-      sock.user = {
-        userId: -1, // Virtual user ID for Kodi addon
-        name: 'Kodi Addon',
-        isAdmin: false,
-        roomId: isNaN(kodiRoomId) ? 1 : kodiRoomId,
-        isKodiAddon: true,
+        // Verify it's actually a Kodi addon token
+        if (!kodiUser.isKodiAddon) {
+          throw new Error('Invalid Kodi token')
+        }
+
+        sock.user = kodiUser
+        sock._isKodiAddonPlayer = true
+
+        log.verbose('Kodi addon connected from %s (room %s)', sock.handshake.address, sock.user.roomId)
+      } catch (err) {
+        io.to(sock.id).emit('action', {
+          type: SOCKET_AUTH_ERROR,
+        })
+
+        sock.user = null
+        sock.disconnect()
+        log.verbose('Kodi addon auth failed from %s (%s)', sock.handshake.address, err.message)
+        return
       }
-
-      // Mark this socket as the Kodi addon player
-      sock._isKodiAddonPlayer = true
     } else {
       // Standard JWT authentication via cookie
       try {

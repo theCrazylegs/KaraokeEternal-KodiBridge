@@ -430,13 +430,14 @@ router.post('/setup', async (ctx) => {
   }
 })
 
-// get a user's image (public endpoint - no auth required for avatars)
+// get a user's image
 router.get('/user/:userId/image', async (ctx) => {
+  // Must be authenticated (Kodi addon should use /api/kodi/avatar/:userId)
+  if (typeof ctx.user.userId !== 'number') {
+    ctx.throw(401)
+  }
+
   const targetId = parseInt(ctx.params.userId, 10)
-
-  // Avatars are public to allow display on Kodi addon and other clients
-  // This is a karaoke system, not a bank - user images are not sensitive
-
   const user = await User.getById(targetId)
 
   if (!user || !user.image) {
