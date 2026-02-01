@@ -16,9 +16,9 @@ class Queue {
     fields.set('roomId', roomId)
     fields.set('songId', songId)
     fields.set('userId', userId)
-    // coSingers stored as JSON string (ex: '["Alice", "Bob"]')
+    // data stored as JSON object (ex: '{"coSingers":["Alice","Bob"]}')
     if (coSingers && Array.isArray(coSingers) && coSingers.length > 0) {
-      fields.set('coSingers', JSON.stringify(coSingers))
+      fields.set('data', JSON.stringify({ coSingers }))
     }
     fields.set('prevQueueId', sql`(
       SELECT queueId
@@ -55,7 +55,7 @@ class Queue {
     let curQueueId = null
 
     const query = sql`
-      SELECT queueId, songId, userId, prevQueueId, coSingers,
+      SELECT queueId, songId, userId, prevQueueId, queue.data AS queueData,
         media.mediaId, media.relPath, media.rgTrackGain, media.rgTrackPeak,
         users.name AS userDisplayName, users.dateUpdated AS userDateUpdated,
         paths.pathId, paths.data AS pathData,
@@ -80,13 +80,15 @@ class Queue {
       entities[row.queueId] = row
       entities[row.queueId].mediaType = this.getType(row.relPath)
       entities[row.queueId].isVideoKeyingEnabled = !!pathPrefs?.isVideoKeyingEnabled
-      // Parse coSingers JSON string to array
-      entities[row.queueId].coSingers = row.coSingers ? JSON.parse(row.coSingers) : []
+      // Parse data JSON and extract coSingers
+      const queueData = row.queueData ? JSON.parse(row.queueData) : {}
+      entities[row.queueId].coSingers = queueData.coSingers || []
 
       // don't send over the wire
       delete entities[row.queueId].relPath
       delete entities[row.queueId].isPreferred
       delete entities[row.queueId].pathData
+      delete entities[row.queueId].queueData
 
       if (row.prevQueueId === null) {
         // found the first item
@@ -228,13 +230,26 @@ class Queue {
    * @return {Promise}
    */
   static async updateCoSingers ({ queueId, coSingers }) {
-    const coSingersJson = coSingers && coSingers.length > 0
-      ? JSON.stringify(coSingers)
+    // First get existing data to merge
+    const getQuery = sql`SELECT data FROM queue WHERE queueId = ${queueId}`
+    const row = await db.get(String(getQuery), getQuery.parameters)
+    const existingData = row?.data ? JSON.parse(row.data) : {}
+
+    // Update coSingers in data object
+    if (coSingers && coSingers.length > 0) {
+      existingData.coSingers = coSingers
+    } else {
+      delete existingData.coSingers
+    }
+
+    // Store as JSON or null if empty
+    const dataJson = Object.keys(existingData).length > 0
+      ? JSON.stringify(existingData)
       : null
 
     const query = sql`
       UPDATE queue
-      SET coSingers = ${coSingersJson}
+      SET data = ${dataJson}
       WHERE queueId = ${queueId}
     `
     const res = await db.run(String(query), query.parameters)
