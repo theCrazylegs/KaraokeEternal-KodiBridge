@@ -28,9 +28,9 @@ class Queue {
     fields.set('songId', songId)
     fields.set('userId', userId)
     fields.set('position', newPosition)
-    // coSingers stored as JSON string (ex: '["Alice", "Bob"]')
+    // data stored as JSON object (ex: '{"coSingers":["Alice","Bob"]}')
     if (coSingers && Array.isArray(coSingers) && coSingers.length > 0) {
-      fields.set('coSingers', JSON.stringify(coSingers))
+      fields.set('data', JSON.stringify({ coSingers }))
     }
 
     const query = sql`
@@ -53,7 +53,7 @@ class Queue {
     const pathData = new Map()
 
     const query = sql`
-      SELECT queueId, songId, userId, position, coSingers,
+      SELECT queueId, songId, userId, position, queue.data AS queueData,
         media.mediaId, media.relPath, media.rgTrackGain, media.rgTrackPeak,
         users.name AS userDisplayName, users.dateUpdated AS userDateUpdated,
         paths.pathId, paths.data AS pathData,
@@ -74,7 +74,7 @@ class Queue {
       songId: number
       userId: number
       position: string
-      coSingers: string | null
+      queueData: string | null
       mediaId: number
       relPath: string
       rgTrackGain: number
@@ -98,13 +98,15 @@ class Queue {
       entities[row.queueId] = row
       entities[row.queueId].mediaType = this.getType(row.relPath)
       entities[row.queueId].isVideoKeyingEnabled = !!pathPrefs?.isVideoKeyingEnabled
-      // Parse coSingers JSON string to array
-      entities[row.queueId].coSingers = row.coSingers ? JSON.parse(row.coSingers) : []
+      // Parse data JSON and extract coSingers
+      const queueData = row.queueData ? JSON.parse(row.queueData) : {}
+      entities[row.queueId].coSingers = queueData.coSingers || []
 
       // don't send over the wire
       delete entities[row.queueId].relPath
       delete entities[row.queueId].isPreferred
       delete entities[row.queueId].pathData
+      delete entities[row.queueId].queueData
       delete entities[row.queueId].position
 
       result.push(row.queueId)
@@ -207,13 +209,26 @@ class Queue {
    * Update co-singers for a queue item
    */
   static updateCoSingers ({ queueId, coSingers }: { queueId: number, coSingers: string[] }): void {
-    const coSingersJson = coSingers && coSingers.length > 0
-      ? JSON.stringify(coSingers)
+    // First get existing data to merge
+    const getQuery = sql`SELECT data FROM queue WHERE queueId = ${queueId}`
+    const row = db.get<{ data: string | null }>(String(getQuery), getQuery.parameters)
+    const existingData = row?.data ? JSON.parse(row.data) : {}
+
+    // Update coSingers in data object
+    if (coSingers && coSingers.length > 0) {
+      existingData.coSingers = coSingers
+    } else {
+      delete existingData.coSingers
+    }
+
+    // Store as JSON or null if empty
+    const dataJson = Object.keys(existingData).length > 0
+      ? JSON.stringify(existingData)
       : null
 
     const query = sql`
       UPDATE queue
-      SET coSingers = ${coSingersJson}
+      SET data = ${dataJson}
       WHERE queueId = ${queueId}
     `
     const res = db.run(String(query), query.parameters)
