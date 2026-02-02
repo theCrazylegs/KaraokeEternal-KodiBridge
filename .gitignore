@@ -12,3 +12,4 @@ node_modules/
 *.tsbuildinfo
 .hugo_build.lock
 .vscode
+plugin.kodi.ke-client/config.ps1
