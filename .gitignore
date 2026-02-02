@@ -14,3 +14,4 @@ node_modules/
 .hugo_build.lock
 .nova
 .vscode
+plugin.kodi.ke-client/config.ps1

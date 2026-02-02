@@ -133,21 +133,28 @@ if (-not $NoClearCache) {
 
 # 4. Déploiement
 Write-Step "Déploiement fichiers..."
-$DEST = "$($Config.KodiDataDir)/addons/$($Config.AddonID)/"
+$DEST = "$($Config.KodiDataDir)/addons/$($Config.AddonID)"
+
+# Créer la structure de dossiers
+& $Config.ADBPath shell "mkdir -p $DEST/resources/language/resource.language.en_gb"
+& $Config.ADBPath shell "mkdir -p $DEST/resources/language/resource.language.fr_fr"
+& $Config.ADBPath shell "mkdir -p $DEST/lib"
+Write-OK "Dossiers créés"
 
 # Fichiers principaux
 @("addon.xml", "service.py", "icon.png", "white.png", "waiting_screen.png") | ForEach-Object {
-    & $Config.ADBPath push $_ "$DEST" | Out-Null
+    & $Config.ADBPath push $_ "$DEST/$_"
     Write-OK "$_"
 }
 
-& $Config.ADBPath push "resources/settings.xml" "$DEST/resources/" | Out-Null
+& $Config.ADBPath push "resources/settings.xml" "$DEST/resources/settings.xml"
 Write-OK "settings.xml"
 
-& $Config.ADBPath push "resources/language/" "$DEST/resources/" | Out-Null
+& $Config.ADBPath push "resources/language/resource.language.en_gb/strings.po" "$DEST/resources/language/resource.language.en_gb/strings.po"
+& $Config.ADBPath push "resources/language/resource.language.fr_fr/strings.po" "$DEST/resources/language/resource.language.fr_fr/strings.po"
 Write-OK "language/ (i18n)"
 
-& $Config.ADBPath push "lib/" "$DEST" | Out-Null
+& $Config.ADBPath push "lib/" "$DEST/lib/"
 Write-OK "lib/ (socket.io)"
 
 # 5. Redémarrage
