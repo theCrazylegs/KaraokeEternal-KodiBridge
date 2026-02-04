@@ -46,7 +46,7 @@ export default function (io, jwtKey) {
     if (authData.token) {
       // Kodi addon authentication via JWT token
       try {
-        const kodiUser = jwtVerify(authData.token, jwtKey)
+        const kodiUser = jwtVerify(authData.token, jwtKey) as any
 
         // Verify it's actually a Kodi addon token
         if (!kodiUser.isKodiAddon) {

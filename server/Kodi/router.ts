@@ -204,17 +204,18 @@ router.get('/stream/:mediaId', verifyKodiToken, async (ctx) => {
  * GET /api/kodi/avatar/:userId
  * Get user avatar for Kodi addon (requires Bearer token)
  */
-router.get('/avatar/:userId', verifyKodiToken, async (ctx) => {
+router.get('/avatar/:userId', verifyKodiToken, (ctx) => {
   const targetId = parseInt(ctx.params.userId, 10)
 
   if (Number.isNaN(targetId)) {
     ctx.throw(422, 'Invalid userId')
   }
 
-  const user = await User.getById(targetId)
+  const user = User.getById(targetId)
 
   if (!user || !user.image) {
     ctx.throw(404, 'User image not found')
+    return
   }
 
   ctx.type = 'image/jpeg'
