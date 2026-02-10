@@ -496,7 +496,7 @@ router.get('/user/:userId/image', (ctx) => {
   }
 
   ctx.type = 'image/jpeg'
-  ctx.body = user.image
+  ctx.body = Buffer.from(user.image)
 })
 
 export default router

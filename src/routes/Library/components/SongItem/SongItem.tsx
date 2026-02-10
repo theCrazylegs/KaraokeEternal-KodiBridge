@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from 'react'
+import React, { useState } from 'react'
 import clsx from 'clsx'
 import Highlighter from 'react-highlight-words'
 import { useSwipeable } from 'react-swipeable'
 import Button from 'components/Button/Button'
+import ButtonStar from 'components/ButtonStar/ButtonStar'
 import Buttons from 'components/Buttons/Buttons'
 import Icon from 'components/Icon/Icon'
 import ToggleAnimation from 'components/ToggleAnimation/ToggleAnimation'
@@ -46,22 +47,22 @@ const SongItem = ({
 }: SongItemProps) => {
   const [isExpanded, setExpanded] = useState(false)
 
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     if (ignoreMouseup) ignoreMouseup = false
     else if (!isUpcoming) onSongQueue(songId)
-  }, [isUpcoming, onSongQueue, songId])
-  const handleInfoClick = useCallback(() => onSongInfo(songId), [onSongInfo, songId])
-  const handleStarClick = useCallback(() => onSongStarClick(songId), [onSongStarClick, songId])
+  }
+  const handleInfoClick = () => onSongInfo(songId)
+  const handleStarClick = () => onSongStarClick(songId)
 
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: useCallback(({ event }) => {
+    onSwipedLeft: ({ event }) => {
       ignoreMouseup = event.type === 'mouseup'
       setExpanded(isAdmin)
-    }, [isAdmin]),
-    onSwipedRight: useCallback(({ event }) => {
+    },
+    onSwipedRight: ({ event }) => {
       ignoreMouseup = event.type === 'mouseup'
       setExpanded(false)
-    }, []),
+    },
     preventScrollOnSwipe: true,
     trackMouse: true,
   })
@@ -99,14 +100,12 @@ const SongItem = ({
       </ToggleAnimation>
 
       <Buttons btnWidth={56} isExpanded={isExpanded}>
-        <Button onClick={handleStarClick} className={clsx(styles.btn, styles.star)}>
-          <ToggleAnimation toggle={isStarred} className={styles.animateStar}>
-            <Icon icon='STAR_FULL' />
-          </ToggleAnimation>
-          <div className={styles.starCount}>
-            {numStars || ''}
-          </div>
-        </Button>
+        <ButtonStar
+          className={styles.btn}
+          onClick={handleStarClick}
+          isStarred={isStarred}
+          count={numStars}
+        />
         <Button onClick={handleInfoClick} className={clsx(styles.btn, styles.info)} data-hide>
           <Icon icon='INFO_OUTLINE' />
         </Button>

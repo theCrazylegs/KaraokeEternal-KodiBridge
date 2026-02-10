@@ -1,9 +1,10 @@
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import clsx from 'clsx'
 import { useSwipeable } from 'react-swipeable'
 import { useLongPress } from 'use-long-press'
 import { useAppDispatch } from 'store/hooks'
 import Button from 'components/Button/Button'
+import ButtonStar from 'components/ButtonStar/ButtonStar'
 import Buttons from 'components/Buttons/Buttons'
 import UserImage from 'components/UserImage/UserImage'
 import { requestPlayNext, requestReplay } from 'store/modules/status'
@@ -33,6 +34,7 @@ interface QueueItemProps {
   pctPlayed: number
   queueId: number
   songId: number
+  starCount: number
   title: string
   userDateUpdated: number
   userDisplayName: string
@@ -65,6 +67,7 @@ const QueueItem = ({
   pctPlayed,
   queueId,
   songId,
+  starCount,
   title,
   userDateUpdated,
   userDisplayName,
@@ -73,25 +76,28 @@ const QueueItem = ({
 }: QueueItemProps) => {
   const [isExpanded, setExpanded] = useState(false)
   const longPressActiveRef = useRef(false)
-
   const dispatch = useAppDispatch()
-  const handleErrorInfoClick = useCallback(() => dispatch(showErrorMessage(errorMessage)), [dispatch, errorMessage])
-  const handleInfoClick = useCallback(() => dispatch(showSongInfo(songId)), [dispatch, songId])
-  const handleMoveClick = useCallback(() => {
+
+  const handleErrorInfoClick = () => dispatch(showErrorMessage(errorMessage))
+  const handleInfoClick = () => dispatch(showSongInfo(songId))
+  const handleMoveClick = () => {
     onMoveClick(queueId)
     setExpanded(false)
-  }, [onMoveClick, queueId])
-  const handleReplayClick = useCallback(() => {
+  }
+  const handleReplayClick = () => {
     dispatch(requestReplay(queueId))
     setExpanded(false)
-  }, [dispatch, queueId])
-  const handleRequeueClick = useCallback(() => {
+  }
+  const handleRequeueClick = () => {
     dispatch(queueSong(songId))
     setExpanded(false)
-  }, [dispatch, songId])
-  const handleRemoveClick = useCallback(() => dispatch(removeItem({ queueId })), [dispatch, queueId])
-  const handleSkipClick = useCallback(() => dispatch(requestPlayNext()), [dispatch])
-  const handleStarClick = useCallback(() => dispatch(toggleSongStarred(songId)), [dispatch, songId])
+  }
+  const handleSkipClick = () => {
+    dispatch(requestPlayNext())
+    setExpanded(false)
+  }
+  const handleRemoveClick = () => dispatch(removeItem({ queueId }))
+  const handleStarClick = () => dispatch(toggleSongStarred(songId))
 
   const handleEditCoSingersClick = useCallback(() => {
     const currentCoSingers = coSingers?.join(', ') || ''
@@ -179,11 +185,11 @@ const QueueItem = ({
               onClick={handleErrorInfoClick}
             />
           )}
-          <Button
-            animateClassName={styles.animateStar}
-            className={clsx(isStarred && styles.active)}
-            icon='STAR_FULL'
+          <ButtonStar
+            className={styles.btnStar}
+            isStarred={isStarred}
             onClick={handleStarClick}
+            count={starCount}
           />
           {canEditCoSingers && (
             <Button
@@ -277,4 +283,4 @@ const QueueItem = ({
   )
 }
 
-export default React.memo(QueueItem)
+export default QueueItem
