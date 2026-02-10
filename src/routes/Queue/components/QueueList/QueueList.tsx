@@ -37,7 +37,7 @@ const QueueList = () => {
     }
 
     dispatch(moveItem({ queueId: qId, prevQueueId: lastPlayed }))
-  }
+  }, [dispatch, queueId, queue.result, queue.entities])
 
   const handleRemoveUpcoming = (userId: number) => {
     dispatch(removeUpcomingItems(userId))
