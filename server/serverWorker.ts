@@ -18,6 +18,7 @@ import Media from './Media/Media.js'
 import Prefs from './Prefs/Prefs.js'
 import libraryRouter from './Library/router.js'
 import mediaRouter from './Media/router.js'
+import pairRouter from './Pair/router.js'
 import prefsRouter from './Prefs/router.js'
 import roomsRouter from './Rooms/router.js'
 import userRouter from './User/router.js'
@@ -143,10 +144,12 @@ async function serverWorker ({ env, startScanner, stopScanner, shutdownHandlers 
   app.use(async (ctx, next) => {
     ctx.jwtKey = jwtKey // used by login route
 
-    // skip JWT/session validation if non-API request or logging in/out
+    // skip JWT/session validation if non-API request or logging in/out/pairing
     if (!ctx.request.path.startsWith(`${urlPath}api/`)
       || ctx.request.path === `${urlPath}api/login`
-      || ctx.request.path === `${urlPath}api/logout`) {
+      || ctx.request.path === `${urlPath}api/logout`
+      || ctx.request.path === `${urlPath}api/pair/code`
+      || ctx.request.path.startsWith(`${urlPath}api/pair/status/`)) {
       return next()
     }
 
@@ -181,6 +184,7 @@ async function serverWorker ({ env, startScanner, stopScanner, shutdownHandlers 
 
   baseRouter.use(libraryRouter.routes())
   baseRouter.use(mediaRouter.routes())
+  baseRouter.use(pairRouter.routes())
   baseRouter.use(prefsRouter.routes())
   baseRouter.use(roomsRouter.routes())
   baseRouter.use(userRouter.routes())
