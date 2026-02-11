@@ -1,8 +1,8 @@
-import Bonjour from 'bonjour-service'
+import { Bonjour } from 'bonjour-service'
 import getLogger from './Log.js'
 
 const log = getLogger('mdns')
-let instance: InstanceType<typeof Bonjour> | null = null
+let instance: Bonjour | null = null
 
 function publish (port: number, urlPath: string) {
   instance = new Bonjour()
