@@ -29,6 +29,7 @@ import socketActions from './socket.js'
 import IPC from './lib/IPCBridge.js'
 import IPCLibraryActions from './Library/ipc.js'
 import IPCMediaActions from './Media/ipc.js'
+import mdns from './lib/mdns.js'
 import { SCANNER_WORKER_EXITED, SERVER_WORKER_STATUS, SERVER_WORKER_ERROR } from '../shared/actionTypes.js'
 
 const log = getLogger('server')
@@ -77,6 +78,9 @@ async function serverWorker ({ env, startScanner, stopScanner, shutdownHandlers 
       const url = `http://${getIPAddress()}${port === 80 ? '' : ':' + port}${urlPath}`
       log.info(`Web server running at ${url}`)
 
+      // advertise via mDNS/Bonjour for automatic discovery
+      mdns.publish(port, urlPath)
+
       process.emit('serverWorker', {
         type: SERVER_WORKER_STATUS,
         payload: { url },
@@ -92,13 +96,17 @@ async function serverWorker ({ env, startScanner, stopScanner, shutdownHandlers 
     })
 
     // handle shutdown gracefully
-    shutdownHandlers.push(() => new Promise((resolve) => {
-      // also calls http server's close method, which ultimately handles the callback
-      io.close(resolve)
+    shutdownHandlers.push(() => {
+      mdns.unpublish()
 
-      // HMR keep-alive connections can prevent http server from fully closing
-      server.closeAllConnections()
-    }))
+      return new Promise((resolve) => {
+        // also calls http server's close method, which ultimately handles the callback
+        io.close(resolve)
+
+        // HMR keep-alive connections can prevent http server from fully closing
+        server.closeAllConnections()
+      })
+    })
   }
 
   // --------------------
