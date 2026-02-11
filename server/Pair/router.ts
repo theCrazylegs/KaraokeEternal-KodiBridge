@@ -41,7 +41,7 @@ router.post('/pair/confirm', async (ctx) => {
   const user = User.getById(ctx.user.userId, true)
 
   if (!user) {
-    ctx.throw(401, 'User not found')
+    return ctx.throw(401, 'User not found')
   }
 
   // determine roomId: prefer body, fallback to JWT
