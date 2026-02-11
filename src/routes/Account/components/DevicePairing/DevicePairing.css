@@ -1,0 +1,39 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+}
+
+.description {
+  color: var(--color-gray-6);
+  margin: 0;
+}
+
+.codeForm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+}
+
+.codeInput {
+  width: 8ch;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: var(--font-size-l);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.2em;
+  padding: var(--space-s) var(--space-m);
+}
+
+.status {
+  font-size: var(--font-size-s);
+  margin: 0;
+}
+
+.success {
+  color: hsl(120, 60%, 50%);
+}
+
+.error {
+  color: hsl(0, 70%, 60%);
+}
