@@ -8,7 +8,6 @@ import { formatSeconds } from 'lib/dateTime'
 import { moveItem, removeUpcomingItems } from '../../modules/queue'
 import getPlayerHistory from '../../selectors/getPlayerHistory'
 import getAdminQueue from '../../selectors/getAdminQueue'
-import getRoundRobinQueue from '../../selectors/getRoundRobinQueue'
 import getWaits from '../../selectors/getWaits'
 import styles from './QueueList.css'
 
@@ -23,18 +22,14 @@ const QueueList = () => {
   const { errorMessage, isAtQueueEnd, isErrored, isPlaying, position, queueId } = useAppSelector(state => state.status)
 
   const playerHistory = useAppSelector(getPlayerHistory)
-  const rrQueue = useAppSelector(getRoundRobinQueue)
-  const adminQueue = useAppSelector(getAdminQueue)
+  // All users see the same raw DB order (history/current first, then upcoming by DB position).
+  // This ensures admin drag-and-drop is immediately visible to all guests.
+  const queue = useAppSelector(getAdminQueue)
   const songs = useAppSelector(state => state.songs)
   const starredSongs = useAppSelector(state => ensureState(state.userStars).starredSongs)
   const starCounts = useAppSelector(state => state.starCounts)
   const user = useAppSelector(state => state.user)
   const waits = useAppSelector(getWaits)
-  // Admin sees raw DB order so drag-and-drop works for all songs (incl. guests').
-  // Round-robin reordering would put guest songs back to their interleaved position
-  // after every drag, making cross-user drag appear broken.
-  // Regular users still see the fair round-robin interleaving.
-  const queue = user.isAdmin ? adminQueue : rrQueue
 
   const dispatch = useAppDispatch()
 
