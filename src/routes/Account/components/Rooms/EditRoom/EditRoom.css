@@ -35,11 +35,6 @@
   }
 }
 
-.nfcUrlRow {
-  display: flex;
-  gap: var(--space-s);
-}
-
 .nfcUrlInput {
   flex: 1;
   min-width: 0;

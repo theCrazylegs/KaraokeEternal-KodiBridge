@@ -78,22 +78,6 @@ const EditRoom = ({ onClose, room }: EditRoomProps) => {
     nfcUrl = url.href
   }
 
-  const handleCopyNfcUrl = () => {
-    if (!nfcUrl) return
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(nfcUrl)
-    } else {
-      // Fallback pour HTTP (clipboard API indisponible hors HTTPS)
-      const el = document.createElement('textarea')
-      el.value = nfcUrl
-      el.style.cssText = 'position:fixed;opacity:0'
-      document.body.appendChild(el)
-      el.select()
-      document.execCommand('copy')
-      document.body.removeChild(el)
-    }
-  }
-
   return (
     <Modal
       className={styles.modal}
@@ -134,18 +118,13 @@ const EditRoom = ({ onClose, room }: EditRoomProps) => {
         {room && (
           <div className={styles.nfcContainer}>
             <label>URL carte NFC (accès guest)</label>
-            <div className={styles.nfcUrlRow}>
-              <input
-                type='text'
-                readOnly
-                value={nfcUrl ?? ''}
-                className={styles.nfcUrlInput}
-                onFocus={e => e.target.select()}
-              />
-              <Button type='button' variant='default' onClick={handleCopyNfcUrl}>
-                Copier
-              </Button>
-            </div>
+            <input
+              type='text'
+              readOnly
+              value={nfcUrl ?? ''}
+              className={styles.nfcUrlInput}
+              onFocus={e => e.target.select()}
+            />
             {room.hasPassword && !isPasswordDirty && !prefs?.qr?.password && (
               <p className={styles.nfcHint}>
                 Re-saisir le mot de passe de la room pour l'inclure dans l'URL
