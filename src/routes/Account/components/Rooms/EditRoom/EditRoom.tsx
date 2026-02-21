@@ -68,6 +68,20 @@ const EditRoom = ({ onClose, room }: EditRoomProps) => {
     setRoomPassword(e.target.value)
   }
 
+  let nfcUrl: string | null = null
+  if (room) {
+    const url = new URL('account', document.baseURI)
+    url.searchParams.set('roomId', String(room.roomId))
+    url.searchParams.set('mode', 'guest')
+    const knownPassword = isPasswordDirty ? roomPassword : (prefs?.qr?.password ?? '')
+    if (knownPassword) url.searchParams.set('password', btoa(knownPassword))
+    nfcUrl = url.href
+  }
+
+  const handleCopyNfcUrl = () => {
+    if (nfcUrl) navigator.clipboard.writeText(nfcUrl)
+  }
+
   return (
     <Modal
       className={styles.modal}
@@ -104,6 +118,29 @@ const EditRoom = ({ onClose, room }: EditRoomProps) => {
             <option value='closed'>Closed</option>
           </select>
         </div>
+
+        {room && (
+          <div className={styles.nfcContainer}>
+            <label>URL carte NFC (accès guest)</label>
+            <div className={styles.nfcUrlRow}>
+              <input
+                type='text'
+                readOnly
+                value={nfcUrl ?? ''}
+                className={styles.nfcUrlInput}
+                onFocus={e => e.target.select()}
+              />
+              <Button type='button' variant='default' onClick={handleCopyNfcUrl}>
+                Copier
+              </Button>
+            </div>
+            {room.hasPassword && !isPasswordDirty && !prefs?.qr?.password && (
+              <p className={styles.nfcHint}>
+                Re-saisir le mot de passe de la room pour l'inclure dans l'URL
+              </p>
+            )}
+          </div>
+        )}
 
         <div className={styles.prefsContainer}>
           <UserPrefs prefs={prefs} onChange={handlePrefsChange} />

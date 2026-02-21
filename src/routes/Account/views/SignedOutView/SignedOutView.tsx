@@ -28,6 +28,7 @@ const SignedOutView = () => {
   const [showAllRooms, setShowAllRooms] = useState(true)
   const [prevRooms, setPrevRooms] = useState<typeof rooms | null>(null)
   const [focusRequest, setFocusRequest] = useState(0)
+  const [nfcGuestMode, setNfcGuestMode] = useState(false)
 
   // once per mount
   useEffect(() => {
@@ -42,6 +43,12 @@ const SignedOutView = () => {
     const roomIdParam = searchParams.get('roomId')
     const id = roomIdParam ? parseInt(roomIdParam, 10) : null
     const password = searchParams.get('password')
+    const modeParam = searchParams.get('mode')
+
+    if (modeParam === 'guest') {
+      setMode('guest')
+      setNfcGuestMode(true)
+    }
 
     if (id && rooms.entities[id]) {
       setRoomId(id)
@@ -144,7 +151,7 @@ const SignedOutView = () => {
       )}
 
       <div ref={userSectionRef} className={clsx(rooms.result.length > 1 && roomId === null && styles.hidden)}>
-        {allowNew
+        {!nfcGuestMode && (allowNew
           ? (
               <>
                 <h1>Join as...</h1>
@@ -155,9 +162,9 @@ const SignedOutView = () => {
                 </div>
               </>
             )
-          : <h1>Sign in</h1>}
+          : <h1>Sign in</h1>)}
 
-        {(mode === 'returning' || !allowNew) && (
+        {(mode === 'returning' || !allowNew) && !nfcGuestMode && (
           <SignIn
             username={username}
             password={password}
@@ -168,9 +175,10 @@ const SignedOutView = () => {
           />
         )}
 
-        {mode !== 'returning' && allowNew && (
+        {(mode !== 'returning' && allowNew) || nfcGuestMode ? (
           <Create
             guest={mode === 'guest'}
+            welcomeMode={nfcGuestMode}
             username={username}
             password={password}
             onUsernameChange={setUsername}
@@ -178,7 +186,7 @@ const SignedOutView = () => {
             onSubmit={handleCreate}
             onFirstFieldRef={handleFirstFieldRef}
           />
-        )}
+        ) : null}
       </div>
     </div>
   )

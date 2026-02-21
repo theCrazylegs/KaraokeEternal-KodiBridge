@@ -8,6 +8,14 @@
   }
 }
 
+.welcomeMessage {
+  margin: 0 0 var(--space-s) 0;
+  color: hsl(var(--hue-blue), 10%, 60%);
+  font-size: var(--font-size-m);
+  text-align: center;
+  line-height: 1.5;
+}
+
 .userDisplayContainer {
   display: flex;
   gap: var(--space-s);

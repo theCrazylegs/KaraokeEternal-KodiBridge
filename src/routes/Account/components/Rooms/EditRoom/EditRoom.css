@@ -22,3 +22,33 @@
 .fieldContainer select {
   width: fit-content;
 }
+
+.nfcContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  margin: var(--space-l) 0;
+
+  label {
+    font-size: var(--font-size-s);
+    color: hsl(var(--hue-blue), 10%, 60%);
+  }
+}
+
+.nfcUrlRow {
+  display: flex;
+  gap: var(--space-s);
+}
+
+.nfcUrlInput {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-s);
+}
+
+.nfcHint {
+  font-size: var(--font-size-s);
+  color: hsl(var(--hue-blue), 10%, 60%);
+  opacity: 0.7;
+  margin: 0;
+}

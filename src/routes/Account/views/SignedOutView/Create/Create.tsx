@@ -5,6 +5,7 @@ import styles from './Create.css'
 
 interface CreateProps {
   guest: boolean
+  welcomeMode?: boolean
   username: string
   password: string
   onUsernameChange: (username: string) => void
@@ -15,6 +16,7 @@ interface CreateProps {
 
 const Create = ({
   guest,
+  welcomeMode = false,
   username,
   password,
   onUsernameChange,
@@ -37,6 +39,12 @@ const Create = ({
       noValidate
       onSubmit={handleSubmit}
     >
+      {welcomeMode && (
+        <p className={styles.welcomeMessage}>
+          Bienvenue ! Choisis un pseudo et une photo pour rejoindre la soirée 🎤
+        </p>
+      )}
+
       {!guest && (
         <>
           <input
@@ -68,7 +76,7 @@ const Create = ({
         <InputImage onSelect={setImage} />
         <input
           type='text'
-          placeholder='display name'
+          placeholder={welcomeMode ? 'Ton pseudo' : 'display name'}
           value={name}
           onChange={e => setName(e.target.value)}
           ref={guest ? onFirstFieldRef : undefined}
@@ -76,7 +84,7 @@ const Create = ({
       </div>
 
       <Button type='submit' variant='primary'>
-        Join
+        {welcomeMode ? "C'est parti !" : 'Join'}
       </Button>
     </form>
   )
