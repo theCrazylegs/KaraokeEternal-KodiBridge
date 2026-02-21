@@ -2,6 +2,33 @@
   /* Container for drag-drop list */
 }
 
+/* Row wrapping gripper + QueueItem for drag-and-drop */
+.draggableRow {
+  display: flex;
+  align-items: stretch;
+}
+
+/* Admin drag handle (gripper icon) */
+.dragHandle {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--color-gray-5);
+  cursor: grab;
+  flex-shrink: 0;
+  touch-action: none;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+/* Invisible gripper placeholder for non-draggable items (current/played) — keeps layout aligned */
+.dragHandleHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .dragging {
   opacity: 0.8;
   background-color: hsl(var(--hue-blue), 50%, 15%);

@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react'
+import clsx from 'clsx'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useAppDispatch, useAppSelector } from 'store/hooks'
 import { ensureState } from 'redux-optimistic-ui'
@@ -6,20 +7,33 @@ import QueueItem from '../QueueItem/QueueItem'
 import { formatSeconds } from 'lib/dateTime'
 import { moveItem, removeUpcomingItems } from '../../modules/queue'
 import getPlayerHistory from '../../selectors/getPlayerHistory'
+import getAdminQueue from '../../selectors/getAdminQueue'
 import getRoundRobinQueue from '../../selectors/getRoundRobinQueue'
 import getWaits from '../../selectors/getWaits'
 import styles from './QueueList.css'
+
+// Constrain drag to vertical axis only
+const getVerticalStyle = (style: React.CSSProperties | undefined): React.CSSProperties | undefined => {
+  if (!style?.transform) return style
+  return { ...style, transform: style.transform.replace(/translate\([^,]+,/, 'translate(0px,') }
+}
 
 const QueueList = () => {
   const artists = useAppSelector(state => state.artists)
   const { errorMessage, isAtQueueEnd, isErrored, isPlaying, position, queueId } = useAppSelector(state => state.status)
 
   const playerHistory = useAppSelector(getPlayerHistory)
-  const queue = useAppSelector(getRoundRobinQueue)
+  const rrQueue = useAppSelector(getRoundRobinQueue)
+  const adminQueue = useAppSelector(getAdminQueue)
   const songs = useAppSelector(state => state.songs)
   const starredSongs = useAppSelector(state => ensureState(state.userStars).starredSongs)
   const user = useAppSelector(state => state.user)
   const waits = useAppSelector(getWaits)
+  // Admin sees raw DB order so drag-and-drop works for all songs (incl. guests').
+  // Round-robin reordering would put guest songs back to their interleaved position
+  // after every drag, making cross-user drag appear broken.
+  // Regular users still see the fair round-robin interleaving.
+  const queue = user.isAdmin ? adminQueue : rrQueue
 
   const dispatch = useAppDispatch()
 
@@ -87,9 +101,25 @@ const QueueList = () => {
           <div
             ref={provided.innerRef}
             {...provided.draggableProps}
-            {...provided.dragHandleProps}
-            className={snapshot.isDragging ? styles.dragging : ''}
+            style={getVerticalStyle(provided.draggableProps.style)}
+            className={clsx(styles.draggableRow, snapshot.isDragging && styles.dragging)}
           >
+            {user.isAdmin && (
+              <div
+                {...(isDraggable ? provided.dragHandleProps : {})}
+                className={clsx(styles.dragHandle, !isDraggable && styles.dragHandleHidden)}
+                aria-label="Drag to reorder"
+              >
+                <svg viewBox="0 0 10 16" fill="currentColor" width="10" height="16" aria-hidden="true">
+                  <circle cx="3" cy="3" r="1.5" />
+                  <circle cx="7" cy="3" r="1.5" />
+                  <circle cx="3" cy="8" r="1.5" />
+                  <circle cx="7" cy="8" r="1.5" />
+                  <circle cx="3" cy="13" r="1.5" />
+                  <circle cx="7" cy="13" r="1.5" />
+                </svg>
+              </div>
+            )}
             <QueueItem
               {...item}
               artist={artists.entities[songs.entities[item.songId].artistId].name}
