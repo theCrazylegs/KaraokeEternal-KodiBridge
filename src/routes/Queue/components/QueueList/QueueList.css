@@ -6,6 +6,13 @@
 .draggableRow {
   display: flex;
   align-items: stretch;
+  overflow: hidden; /* prevent swipe-expanded buttons from overflowing the row */
+}
+
+/* QueueItem inside the row must take all remaining space and not overflow */
+.draggableRow > :last-child {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Admin drag handle (gripper icon) */
