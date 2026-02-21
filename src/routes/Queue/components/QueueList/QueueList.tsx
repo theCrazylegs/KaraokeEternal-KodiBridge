@@ -79,8 +79,10 @@ const QueueList = () => {
       prevQueueId = queue.result[destIndex - 1]
     }
 
+    const queueSnapshot = queue.result.map((qId, i) => `${i}:${qId}(${queue.entities[qId]?.userId})`).join(' ')
+    console.log(`[DRAG] src=${result.source.index} dest=${destIndex} moving queueId=${sourceQueueId} after prevQueueId=${prevQueueId} | queue: ${queueSnapshot}`)
     dispatch(moveItem({ queueId: sourceQueueId, prevQueueId }))
-  }, [dispatch, queue.result, user.isAdmin])
+  }, [dispatch, queue.result, queue.entities, user.isAdmin])
 
   // Build items with drag info
   const items = queue.result.map((qId, index) => {
