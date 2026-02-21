@@ -79,7 +79,19 @@ const EditRoom = ({ onClose, room }: EditRoomProps) => {
   }
 
   const handleCopyNfcUrl = () => {
-    if (nfcUrl) navigator.clipboard.writeText(nfcUrl)
+    if (!nfcUrl) return
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(nfcUrl)
+    } else {
+      // Fallback pour HTTP (clipboard API indisponible hors HTTPS)
+      const el = document.createElement('textarea')
+      el.value = nfcUrl
+      el.style.cssText = 'position:fixed;opacity:0'
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
   }
 
   return (
