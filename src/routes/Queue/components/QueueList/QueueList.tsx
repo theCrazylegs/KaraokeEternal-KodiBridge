@@ -60,11 +60,23 @@ const QueueList = () => {
     const sourceQueueId = queue.result[result.source.index]
     const destIndex = result.destination.index
 
-    // Find the prevQueueId for the destination
-    // If moving to position 0, prevQueueId is -1 (null in server)
-    // Otherwise, prevQueueId is the item before the destination
+    // Index of first draggable (upcoming) item in the display list.
+    // History/current items sit before it and are non-draggable.
+    // The current song may have a DB position that is NOT the lowest among
+    // upcoming items (e.g. current=Zl but next upcoming=Zk). Dropping at the
+    // "first upcoming slot" must therefore use prevQueueId=-1 (insert before
+    // the lowest DB position) rather than prevQueueId=currentSong, which would
+    // insert after Zl and leave the item below Zk in DB order.
+    const firstUpcomingIdx = queue.result.findIndex(qId =>
+      !playerHistory.includes(qId) &&
+      qId !== queueId &&
+      queue.entities[qId]?.isOptimistic !== true
+    )
+
     let prevQueueId: number
-    if (destIndex === 0) {
+    if (firstUpcomingIdx === -1 || destIndex <= firstUpcomingIdx) {
+      // Dropping at or before the history/current boundary:
+      // insert before all DB items so it becomes the first upcoming in display
       prevQueueId = -1
     } else if (destIndex > result.source.index) {
       // Moving down - prevQueueId is the item at destIndex
@@ -74,10 +86,8 @@ const QueueList = () => {
       prevQueueId = queue.result[destIndex - 1]
     }
 
-    const queueSnapshot = queue.result.map((qId, i) => `${i}:${qId}(${queue.entities[qId]?.userId})`).join(' ')
-    console.log(`[DRAG] src=${result.source.index} dest=${destIndex} moving queueId=${sourceQueueId} after prevQueueId=${prevQueueId} | queue: ${queueSnapshot}`)
     dispatch(moveItem({ queueId: sourceQueueId, prevQueueId }))
-  }, [dispatch, queue.result, queue.entities, user.isAdmin])
+  }, [dispatch, queue.result, queue.entities, user.isAdmin, playerHistory, queueId])
 
   // Build items with drag info
   const items = queue.result.map((qId, index) => {
