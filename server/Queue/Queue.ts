@@ -107,7 +107,7 @@ class Queue {
       delete entities[row.queueId].isPreferred
       delete entities[row.queueId].pathData
       delete entities[row.queueId].queueData
-      delete entities[row.queueId].position
+      // position is kept: used by client for debug display
 
       result.push(row.queueId)
     }

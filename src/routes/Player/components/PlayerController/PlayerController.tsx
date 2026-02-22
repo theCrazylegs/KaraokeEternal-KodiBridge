@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from 'store/hooks'
 import Player from '../Player/Player'
 import PlayerTextOverlay from '../PlayerTextOverlay/PlayerTextOverlay'
 import PlayerQR from '../PlayerQR/PlayerQR'
-import getRoundRobinQueue from 'routes/Queue/selectors/getRoundRobinQueue'
+import getAdminQueue from 'routes/Queue/selectors/getAdminQueue'
 import { playerLeave, playerError, playerLoad, playerPlay, playerStatus, type PlayerState } from '../../modules/player'
 import getRoomPrefs from '../../selectors/getRoomPrefs'
 import type { QueueItem } from 'shared/types'
@@ -14,7 +14,7 @@ interface PlayerControllerProps {
 }
 
 const PlayerController = (props: PlayerControllerProps) => {
-  const queue = useAppSelector(getRoundRobinQueue)
+  const queue = useAppSelector(getAdminQueue)
   const player = useAppSelector(state => state.player)
   const playerVisualizer = useAppSelector(state => state.playerVisualizer)
   const prefs = useAppSelector(state => state.prefs)

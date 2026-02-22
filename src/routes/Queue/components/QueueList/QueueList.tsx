@@ -117,6 +117,7 @@ const QueueList = () => {
                   <circle cx="3" cy="13" r="1.5" />
                   <circle cx="7" cy="13" r="1.5" />
                 </svg>
+                <span className={styles.positionBadge}>{item.position ?? '?'}</span>
               </div>
             )}
             <QueueItem

@@ -26,6 +26,7 @@ export interface QueueItem {
   isOptimistic?: false
   isVideoKeyingEnabled: boolean
   coSingers?: string[]
+  position?: string
 }
 
 export interface OptimisticQueueItem {

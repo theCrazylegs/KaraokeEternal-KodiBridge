@@ -1,5 +1,6 @@
 import Queue from './Queue.js'
 import Rooms from '../Rooms/Rooms.js'
+import { logQueueAction } from '../lib/queueLogger.js'
 import { QUEUE_ADD, QUEUE_MOVE, QUEUE_REMOVE, QUEUE_PUSH, QUEUE_UPDATE } from '../../shared/actionTypes.js'
 
 // ------------------------------------
@@ -24,6 +25,8 @@ const ACTION_HANDLERS = {
       userId: sock.user.userId,
       coSingers: coSingers || null,
     })
+
+    logQueueAction('QUEUE_ADD', sock.user.userId, sock.user.roomId, `songId=${songId}`)
 
     // success
     acknowledge({ type: QUEUE_ADD + '_SUCCESS' })
@@ -59,6 +62,8 @@ const ACTION_HANDLERS = {
       roomId: sock.user.roomId,
     })
 
+    logQueueAction('QUEUE_MOVE', sock.user.userId, sock.user.roomId, `queueId=${queueId} after prevQueueId=${prevQueueId}`)
+
     // success
     acknowledge({ type: QUEUE_MOVE + '_SUCCESS' })
 
@@ -82,6 +87,8 @@ const ACTION_HANDLERS = {
     for (const id of ids) {
       Queue.remove(id)
     }
+
+    logQueueAction('QUEUE_REMOVE', sock.user.userId, sock.user.roomId, `queueId=${JSON.stringify(queueId)}`)
 
     // success
     acknowledge({ type: QUEUE_REMOVE + '_SUCCESS' })
